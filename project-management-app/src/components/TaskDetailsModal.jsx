@@ -48,7 +48,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
   const [subtasks, setSubtasks] = useState([]);
 
   // Debug logs
-  console.log('TaskDetailsModal taskComments state:', taskComments);
+        console.log('TaskDetailsModal taskComments state:', taskComments);
 
   useEffect(() => {
     // Trap focus
@@ -84,13 +84,16 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
       try {
         const response = await ProjectTaskAPI.getTaskById(task.id);
         const data = response?.data || response;
+        // Fetch attachments for this task from backend
+        const attachmentList = await getAttachmentsByProjectTaskId(task.id);
+        const attachments = attachmentList?.data || attachmentList || [];
         const responseComment = await CommentAPI.getCommentsByProjectTaskId(task.id);
         const dataComment = responseComment?.data || responseComment;
         const responseAllTasks = await ProjectTaskAPI.getAllTasks();
         const dataAllTasks = responseAllTasks?.data || responseAllTasks;
 
         console.log('Fetched task data:', data);
-        setEditTask({ ...data, attachments: data.attachments || [] });
+        setEditTask({ ...data, attachments });
         setTaskComments(Array.isArray(dataComment) ? dataComment : (dataComment.comments || []));
         setAllTasks(Array.isArray(dataAllTasks) ? dataAllTasks : []);
         setSubtasks(dataAllTasks.filter(t => t.nestedLevel === 1 && t.parentId === task.id));
@@ -109,9 +112,9 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
   // Filter people by query
   const filteredPeople = assigneeQuery
     ? people.filter(p =>
-      p.name.toLowerCase().includes(assigneeQuery.toLowerCase()) ||
-      p.email.toLowerCase().includes(assigneeQuery.toLowerCase())
-    )
+        p.name.toLowerCase().includes(assigneeQuery.toLowerCase()) ||
+        p.email.toLowerCase().includes(assigneeQuery.toLowerCase())
+      )
     : people;
 
   const handleSave = () => {
@@ -173,31 +176,63 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
   // };
 
   // File handling functions
-  const handleFileSelect = (event) => {
+  const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
-    const newAttachments = files.map(file => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-      url: URL.createObjectURL(file) // In a real app, this would be uploaded to a server
-    }));
+    if (files.length === 0) return;
 
-    setEditTask(prev => ({
-      ...prev,
-      attachments: [...(prev.attachments || []), ...newAttachments]
-    }));
+    const file = files[0]; // Only handle the first file
+
+    try {
+      // Upload to backend
+      await uploadAttachment(editTask.id, file);
+      // Refetch attachments from backend
+      const attachmentList = await getAttachmentsByProjectTaskId(editTask.id);
+      const attachments = attachmentList?.data || attachmentList || [];
+      setEditTask(prev => ({
+        ...prev,
+        attachments: attachments
+      }));
+    } catch (err) {
+      alert(`Failed to upload ${file.name}`);
+      console.error(err);
+    }
 
     // Reset file input
     event.target.value = '';
   };
 
-  const handleRemoveAttachment = (attachmentId) => {
-    setEditTask(prev => ({
-      ...prev,
-      attachments: prev.attachments.filter(att => att.id !== attachmentId)
-    }));
+  const handleRemoveAttachment = async (attachmentId) => {
+    try {
+      await deleteAttachment(attachmentId);
+      // Refetch attachments from backend
+      const attachmentList = await getAttachmentsByProjectTaskId(editTask.id);
+      const attachments = attachmentList?.data || attachmentList || [];
+      setEditTask(prev => ({
+        ...prev,
+        attachments: attachments
+      }));
+    } catch (err) {
+      alert('Failed to delete attachment.');
+      console.error(err);
+    }
+  };
+
+  // Download attachment handler
+  const handleDownloadAttachment = async (attachment) => {
+    try {
+      const blob = await downloadAttachment(attachment.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.name || attachment.attachmentName || 'attachment';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Failed to download attachment.');
+      console.error(err);
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -261,8 +296,8 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                 {editTask.completed ? 'Completed' :
                   (editTask.status === 'in_progress' ? 'In progress' :
                     editTask.status === 'todo' ? 'To do' :
-                      editTask.status === 'completed' ? 'Completed' :
-                        editTask.status || 'To do')}
+                    editTask.status === 'completed' ? 'Completed' :
+                    editTask.status || 'To do')}
               </span>
             </div>
             {/* Title */}
@@ -332,7 +367,6 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                   </div>
                 )}
               </div>
-
               {/* Due date */}
               <div>
                 <div className="text-sm text-gray-500 mb-1">Due date</div>
@@ -346,8 +380,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                   />
                 </div>
               </div>
-
-              {/* Project (read-only) */}
+              {/* Projects (read-only for now) */}
               {editTask.projectName && (
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Project</div>
@@ -410,10 +443,17 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                 <div className="space-y-2 mb-3">
                   {editTask.attachments.map(attachment => (
                     <div key={attachment.id} className="flex items-center gap-3 bg-gray-100 rounded-lg p-3">
-                      <span className="text-xl">{getFileIcon(attachment.type)}</span>
+                      <span className="text-xl">{getFileIcon(attachment.type || '')}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{attachment.name}</div>
-                        <div className="text-xs text-gray-500">{formatFileSize(attachment.size)}</div>
+                        <button
+                          className="font-medium text-sm truncate text-cyan-700 hover:underline bg-transparent border-none p-0 m-0 cursor-pointer"
+                          style={{ background: 'none' }}
+                          onClick={() => handleDownloadAttachment(attachment)}
+                          title="Download attachment"
+                        >
+                          {attachment.name || attachment.attachmentName}
+                        </button>
+                        {attachment.size && <div className="text-xs text-gray-500">{formatFileSize(attachment.size)}</div>}
                       </div>
                       <button
                         onClick={() => handleRemoveAttachment(attachment.id)}
@@ -430,7 +470,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  multiple
+                  multiple={false}
                   onChange={handleFileSelect}
                   className="hidden"
                   accept="*/*"
@@ -459,88 +499,84 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                 )}
               </div>
               {/* Add Subtask Button and Form BELOW the list (if you want to keep it) */}
-              {
-                !showSubtaskForm && (
-                  <button
-                    className="mt-2 px-3 py-2 border border-gray-400 rounded text-sm text-black hover:bg-gray-100 flex items-center gap-2"
-                    onClick={() => setShowSubtaskForm(true)}
-                  >
-                    <span className="text-lg">+</span> Add Subtask
-                  </button>
-                )
-              }
-              {
-                showSubtaskForm && (
-                  <div className="mt-2 p-3 bg-gray-50 rounded border">
-                    <div className="flex flex-col gap-2">
+              {!showSubtaskForm && (
+                <button
+                  className="mt-2 px-3 py-2 border border-gray-400 rounded text-sm text-black hover:bg-gray-100 flex items-center gap-2"
+                  onClick={() => setShowSubtaskForm(true)}
+                >
+                  <span className="text-lg">+</span> Add Subtask
+                </button>
+              )}
+              {showSubtaskForm && (
+                <div className="mt-2 p-3 bg-gray-50 rounded border">
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      className="border rounded px-2 py-1"
+                      placeholder="Subtask title"
+                      value={newSubtask.title}
+                      onChange={e => setNewSubtask(s => ({ ...s, title: e.target.value }))}
+                    />
+                    <textarea
+                      className="border rounded px-2 py-1"
+                      placeholder="Description"
+                      value={newSubtask.description}
+                      onChange={e => setNewSubtask(s => ({ ...s, description: e.target.value }))}
+                    />
+                    <div className="flex gap-2">
                       <input
-                        type="text"
-                        className="border rounded px-2 py-1"
-                        placeholder="Subtask title"
-                        value={newSubtask.title}
-                        onChange={e => setNewSubtask(s => ({ ...s, title: e.target.value }))}
+                        type="date"
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.startDate}
+                        onChange={e => setNewSubtask(s => ({ ...s, startDate: e.target.value }))}
                       />
-                      <textarea
-                        className="border rounded px-2 py-1"
-                        placeholder="Description"
-                        value={newSubtask.description}
-                        onChange={e => setNewSubtask(s => ({ ...s, description: e.target.value }))}
+                      <input
+                        type="date"
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.endDate}
+                        onChange={e => setNewSubtask(s => ({ ...s, endDate: e.target.value }))}
                       />
-                      <div className="flex gap-2">
-                        <input
-                          type="date"
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.startDate}
-                          onChange={e => setNewSubtask(s => ({ ...s, startDate: e.target.value }))}
-                        />
-                        <input
-                          type="date"
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.endDate}
-                          onChange={e => setNewSubtask(s => ({ ...s, endDate: e.target.value }))}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <select
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.priority}
-                          onChange={e => setNewSubtask(s => ({ ...s, priority: e.target.value }))}
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                        </select>
-                        <select
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.status}
-                          onChange={e => setNewSubtask(s => ({ ...s, status: e.target.value }))}
-                        >
-                          <option value="todo">To do</option>
-                          <option value="in_progress">In progress</option>
-                          <option value="completed">Completed</option>
-                        </select>
-                      </div>
-                      {subtaskError && <div className="text-red-500 text-sm">{subtaskError}</div>}
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          className="bg-cyan-600 text-white px-3 py-1 rounded"
-                          onClick={handleAddSubtask}
-                          disabled={!newSubtask.title.trim() || addingSubtask}
-                        >
-                          {addingSubtask ? 'Adding...' : 'Add Subtask'}
-                        </button>
-                        <button
-                          className="bg-gray-200 text-gray-700 px-3 py-1 rounded"
-                          onClick={() => { setShowSubtaskForm(false); setNewSubtask({ title: '', description: '', startDate: '', endDate: '', priority: 'medium', status: 'todo' }); setSubtaskError(''); }}
-                          disabled={addingSubtask}
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <select
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.priority}
+                        onChange={e => setNewSubtask(s => ({ ...s, priority: e.target.value }))}
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                      <select
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.status}
+                        onChange={e => setNewSubtask(s => ({ ...s, status: e.target.value }))}
+                      >
+                        <option value="todo">To do</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                    {subtaskError && <div className="text-red-500 text-sm">{subtaskError}</div>}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        className="bg-cyan-600 text-white px-3 py-1 rounded"
+                        onClick={handleAddSubtask}
+                        disabled={!newSubtask.title.trim() || addingSubtask}
+                      >
+                        {addingSubtask ? 'Adding...' : 'Add Subtask'}
+                      </button>
+                      <button
+                        className="bg-gray-200 text-gray-700 px-3 py-1 rounded"
+                        onClick={() => { setShowSubtaskForm(false); setNewSubtask({ title: '', description: '', startDate: '', endDate: '', priority: 'medium', status: 'todo' }); setSubtaskError(''); }}
+                        disabled={addingSubtask}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
-                )
-              }
+                </div>
+              )}
             </div>
             {/* --- COMMENT SECTION --- */}
             <div className="mt-6">
@@ -576,48 +612,46 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
             </div>
           </div>
         </div>
-        {/* Save/Cancel */}
-        <div className="flex justify-end gap-2 mt-8 p-4 bg-white border-t border-gray-100 sticky bottom-0 left-0 right-0 z-10">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600 font-semibold"
-          >
-            Save
-          </button>
-        </div>
-        <style jsx>{`
-          .animate-slide-in {
-            transform: translateX(100%);
-            animation: slideInDrawer 0.3s forwards;
-          }
-          @keyframes slideInDrawer {
-            to {
-              transform: translateX(0);
-            }
-          }
-        `}</style>
       </div>
+      {/* Save/Cancel */}
+      <div className="flex justify-end gap-2 mt-8 p-4 bg-white border-t border-gray-100 sticky bottom-0 left-0 right-0 z-10">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600 font-semibold"
+        >
+          Save
+        </button>
+      </div>
+      <style jsx>{`
+        .animate-slide-in {
+          transform: translateX(100%);
+          animation: slideInDrawer 0.3s forwards;
+        }
+        @keyframes slideInDrawer {
+          to {
+            transform: translateX(0);
+          }
+        }
+      `}</style>
       {/* Subtask detail modal */}
-      {
-        showSubtaskModal && (
-          <TaskDetailsModal
-            task={showSubtaskModal}
-            onClose={() => setShowSubtaskModal(null)}
-            onSave={updated => {
-              // handleUpdateSubtask(showSubtaskModal.id, updated);
-              setShowSubtaskModal(null);
-            }}
-            projects={projects}
-            onAddComment={onAddComment}
-          />
-        )
-      }
+      {showSubtaskModal && (
+        <TaskDetailsModal
+          task={showSubtaskModal}
+          onClose={() => setShowSubtaskModal(null)}
+          onSave={updated => {
+            // handleUpdateSubtask(showSubtaskModal.id, updated);
+            setShowSubtaskModal(null);
+          }}
+          projects={projects}
+          onAddComment={onAddComment}
+        />
+      )}
     </>
   );
 }
