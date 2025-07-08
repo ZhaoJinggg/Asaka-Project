@@ -219,7 +219,9 @@ function App() {
           path="/projects"
           element={
             <ProtectedRoute>
-              <Projects onLogout={handleLogout} />
+              <Projects onLogout={handleLogout}
+              userInfo={userInfo}
+               />
             </ProtectedRoute>
           }
         />
@@ -228,7 +230,7 @@ function App() {
           path="/projects/:projectId"
           element={
             <ProtectedRoute>
-              <ProjectDetails onLogout={handleLogout} projects={projects} onUpdateProject={handleUpdateProject} users={users} />
+              <ProjectDetails onLogout={handleLogout} projects={projects} onUpdateProject={handleUpdateProject} users={users} userInfo={userInfo}/>
             </ProtectedRoute>
           }
         />

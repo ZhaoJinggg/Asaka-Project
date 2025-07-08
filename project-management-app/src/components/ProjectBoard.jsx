@@ -3,6 +3,8 @@ import { useTasks } from '../context/TaskContext';
 import { FiCalendar, FiUser } from 'react-icons/fi';
 import TaskDetailsModal from './TaskDetailsModal';
 import * as ProjectTaskAPI from '../API/ProjectTaskAPI';
+import { getAllUsers } from '../API/UserAPI';
+import { getUserId } from '../API/AuthAPI';
 
 const columns = [
     { key: 'todo', title: 'To Do' },
@@ -41,6 +43,7 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
     const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [currentUserRole, setCurrentUserRole] = useState(undefined);
 
     // Fetch tasks for this project
     useEffect(() => {
@@ -68,6 +71,21 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
         };
         fetchProjectTasks();
     }, [projectId]);
+
+    useEffect(() => {
+        const fetchRole = async () => {
+            try {
+                const response = await getAllUsers();
+                const users = response.data || [];
+                const currentUserId = await getUserId();
+                const user = users.find(u => String(u.id) === String(currentUserId));
+                setCurrentUserRole(user?.role);
+            } catch (error) {
+                setCurrentUserRole(undefined);
+            }
+        };
+        fetchRole();
+    }, []);
 
     // Add task to API and local state
     const addTask = async (projectId, taskData) => {
@@ -159,6 +177,7 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                                             }}
                                             placeholder="Write a task name"
                                             className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 text-base"
+                                            disabled={currentUserRole === 'contributor'}
                                         />
                                     </div>
                                     <div className="flex items-center gap-2 mb-1">
@@ -168,6 +187,7 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                                             onChange={e => setInlineTask(prev => ({ ...prev, description: e.target.value }))}
                                             placeholder="Description (required)"
                                             className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-400 text-base"
+                                            disabled={currentUserRole === 'contributor'}
                                         />
                                     </div>
                                     <div className="flex items-center gap-2 mb-1">
@@ -178,10 +198,8 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                                             onChange={e => setInlineTask(prev => ({ ...prev, startDate: e.target.value }))}
                                             placeholder="Start Date (required)"
                                             className="flex-1 bg-transparent border border-gray-300 rounded px-2 py-1 outline-none text-gray-800 placeholder-gray-400 text-base"
+                                            disabled={currentUserRole === 'contributor'}
                                         />
-                                        {/* <button type="button" className="ml-2 text-gray-500 hover:text-blue-500">
-                                        <FiCalendar />
-                                    </button> */}
                                     </div>
                                     <div className="flex items-center gap-2 mb-1">
                                         <label className="w-24 text-xs text-gray-700">Due Date</label>
@@ -191,16 +209,15 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                                             onChange={e => setInlineTask(prev => ({ ...prev, dueDate: e.target.value }))}
                                             placeholder="Due Date"
                                             className="flex-1 bg-transparent border border-gray-300 rounded px-2 py-1 outline-none text-gray-800 placeholder-gray-400 text-base"
+                                            disabled={currentUserRole === 'contributor'}
                                         />
-                                        {/* <button type="button" className="ml-2 text-gray-500 hover:text-blue-500">
-                                        <FiCalendar />
-                                    </button> */}
                                     </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         <select
                                             value={inlineTask.priority}
                                             onChange={e => setInlineTask(prev => ({ ...prev, priority: e.target.value }))}
                                             className="px-2 py-1 rounded text-xs font-semibold border border-dashed border-gray-500 text-gray-700"
+                                            disabled={currentUserRole === 'contributor'}
                                         >
                                             <option value="low">Low</option>
                                             <option value="medium">Medium</option>
@@ -210,6 +227,7 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                                             value={inlineTask.status}
                                             onChange={e => setInlineTask(prev => ({ ...prev, status: e.target.value }))}
                                             className="px-2 py-1 rounded text-xs font-semibold border border-dashed border-gray-500 text-gray-700"
+                                            disabled={currentUserRole === 'contributor'}
                                         >
                                             {columns.map(col => (
                                                 <option key={col.key} value={col.key}>{col.title}</option>
@@ -220,12 +238,14 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                                         <button
                                             className="px-2 py-1 text-gray-500 text-sm font-medium"
                                             onClick={() => { setInlineAddStatus(null); setInlineTask({ title: '', description: '', startDate: '', priority: 'medium', status: col.key, dueDate: '' }); setShowDatePicker(false); }}
+                                            disabled={currentUserRole === 'contributor'}
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             className="px-2 py-1 text-blue-500 hover:text-blue-700 text-sm font-medium"
                                             onClick={() => handleInlineAdd(col.key)}
+                                            disabled={currentUserRole === 'contributor'}
                                         >
                                             Add
                                         </button>
@@ -238,6 +258,7 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                                         setInlineTask({ title: '', description: '', startDate: '', priority: 'medium', status: col.key, dueDate: '' });
                                     }}
                                     className="w-full p-3 text-left text-gray-500 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2"
+                                    disabled={currentUserRole === 'contributor'}
                                 >
                                     + Add Task
                                 </button>

@@ -95,7 +95,7 @@ export const getTaskComments = async (taskId) => {
 };
 
 export const addSubtask = async (taskId, userId, subtask) => {
-  return await requestWrapper(`${TASK_API_URL}/${taskId}/${userId}/subtasks`, "POST", subtask);
+  return await requestWrapper(`${TASK_API_URL}/${taskId}/${userId}/subtask`, "POST", {...subtask});
 };
 // export const addTaskAttachment = async (taskId, file) => {
 //   const formData = new FormData();
