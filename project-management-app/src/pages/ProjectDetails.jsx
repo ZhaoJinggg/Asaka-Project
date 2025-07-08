@@ -1,21 +1,24 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { projectColors } from '../data/colors';
+import { deleteProject, updateProject } from '../API/ProjectAPI';
 import Layout from '../components/Layout';
 import ProjectOverview from '../components/ProjectOverview';
 import ProjectBoard from '../components/ProjectBoard.jsx';
 import FilesView from '../components/FilesView';
-import { useTasks } from '../context/TaskContext';
+// TaskContext removed
 import OverviewIcon from '../assets/overview-svgrepo-com.svg';
 import BoardIcon from '../assets/board-svgrepo-com.svg';
+import FilesIcon from '../assets/folder-arrow-up-svgrepo-com.svg';
 
-const ProjectDetails = ({ onLogout, projects = [], onUpdateProject}) => {
+const ProjectDetails = ({ onLogout, projects = [], projectTasks = [], onUpdateProject, users = [] }) => {
     const { projectId } = useParams();
-    const [activeTab, setActiveTab] = useState('board');
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'board', 'files'
+    const navigate = useNavigate();
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const { tasks } = useTasks();
+    const tasks = projectTasks;
 
     // Find current project from list (convert id to number)
     const currentProject = projects.find(p => p.id === projectId);
@@ -34,20 +37,46 @@ const ProjectDetails = ({ onLogout, projects = [], onUpdateProject}) => {
     // Handlers for dropdown actions
     const handleEdit = () => {
         // Placeholder: open edit modal or call onUpdateProject
-        alert('Edit project details (implement modal as needed)');
         setShowDropdown(false);
     };
-    const handleArchive = () => {
-        onUpdateProject?.(currentProject.id, { archived: true });
+    const handleArchive = async () => {
+        try {
+            // Backend may require the full project payload rather than a partial.
+            const payload = {
+                title: currentProject.title,
+                description: currentProject.description,
+                goal: currentProject.goal,
+                color: currentProject.color,
+                priority: currentProject.priority,
+                status: 'Archived',
+                startDate: currentProject.startDate,
+                endDate: currentProject.endDate,
+            };
+            await updateProject(currentProject.id, payload);
+            // Update local state so UI reflects the change immediately
+            onUpdateProject?.(currentProject.id, { status: 'Archived' });
+            // Navigate to home page after successful archive and reload to refresh global state
+            navigate('/home');
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to archive project', error);
+        }
         setShowDropdown(false);
     };
     const handleDelete = () => {
         setShowDeleteConfirm(true);
         setShowDropdown(false);
     };
-    const confirmDelete = () => {
-        onUpdateProject?.(currentProject.id, { deleted: true });
-        setShowDeleteConfirm(false);
+    const confirmDelete = async () => {
+        try {
+            await deleteProject(currentProject.id);
+            onUpdateProject?.(currentProject.id, { __deleted: true });
+            setShowDeleteConfirm(false);
+            navigate('/home');
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to delete project', error);
+        }
     };
 
     const handleFileClick = (file) => {
@@ -129,7 +158,7 @@ const ProjectDetails = ({ onLogout, projects = [], onUpdateProject}) => {
                         </div>
                         {/* Delete confirmation dialog */}
                         {showDeleteConfirm && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 bg-opacity-30">
                                 <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
                                     <h2 className="text-lg font-bold mb-4">Delete Project?</h2>
                                     <p className="mb-6 text-gray-700">Are you sure you want to delete this project? This action cannot be undone.</p>
@@ -183,7 +212,7 @@ const ProjectDetails = ({ onLogout, projects = [], onUpdateProject}) => {
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
-                            <span className="text-lg">📁</span>
+                            <img src={FilesIcon} alt="Files" className="w-4 h-4" />
                             Files
                         </button>
                         {/* Add more tabs as needed: List, Timeline, Calendar, etc. */}
@@ -192,7 +221,9 @@ const ProjectDetails = ({ onLogout, projects = [], onUpdateProject}) => {
             </div>
 
             {/* Tab Content */}
-            {activeTab === 'overview' && currentProject && <ProjectOverview project={currentProject} />}
+            {activeTab === 'overview' && currentProject && (
+                <ProjectOverview project={currentProject} onUpdateProject={onUpdateProject} users={users} />
+            )}
             {activeTab === 'board' && <ProjectBoard projectId={projectId} />}
             {activeTab === 'files' && (
                 <FilesView

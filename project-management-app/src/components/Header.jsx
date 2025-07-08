@@ -8,16 +8,60 @@ import MessageIcon from "../assets/message-square-svgrepo-com.svg";
 import InviteIcon from "../assets/add-user-svgrepo-com.svg";
 import UserProfileIcon from "../assets/profile-circle-svgrepo-com.svg";
 import LogoutIcon from "../assets/logout-svgrepo-com.svg";
+import ArchiveIcon from "../assets/archive-svgrepo-com.svg";
+import { updateProject } from "../API/ProjectAPI";
+import { useNavigate } from "react-router-dom";
 
 import { authenticatedOnlyAsync, isTokenValid } from "../API/AuthAPI.js";
 
-const Header = ({ onToggleSidebar, onLogout }) => {
+const Header = ({ onToggleSidebar, onLogout, projects = [] }) => {
+  const navigate = useNavigate();
   const [showCreateDropdown, setShowCreateDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const createDropdownRef = useRef(null);
   const profileDropdownRef = useRef(null);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  // Local copy of archived projects so UI updates immediately after restore
+  const [archivedList, setArchivedList] = useState([]);
+
+  // Whenever projects prop changes, update archived list
+  useEffect(() => {
+    const archived = (projects || []).filter(
+      (p) => (p.status || "").toLowerCase() === "archived" || p.archived
+    );
+    setArchivedList(archived);
+  }, [projects]);
+
+  // Handle restoring / changing status of an archived project
+  const handleRestore = async (project, newStatus = "Active") => {
+    try {
+      const payload = {
+        title: project.title,
+        description: project.description,
+        goal: project.goal,
+        color: project.color,
+        priority: project.priority,
+        status: newStatus,
+        startDate: project.startDate,
+        endDate: project.endDate,
+      };
+      await updateProject(project.id, payload);
+      // Remove from local list so UI updates
+      setArchivedList((prev) => prev.filter((p) => p.id !== project.id));
+      // Navigate to the appropriate page
+      if (newStatus.toLowerCase() === 'archived') {
+        navigate('/home');
+      } else {
+        navigate(`/projects/${project.id}`);
+      }
+      // Force reload to ensure global state refreshes
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to change project status", err);
+    }
+  };
 
   const handleLogoClick = async () => {
     var message = await authenticatedOnlyAsync();
@@ -115,7 +159,7 @@ const Header = ({ onToggleSidebar, onLogout }) => {
           {/* Dropdown Menu */}
           {showCreateDropdown && (
             <div className="absolute top-full left-0 mt-2 w-42 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-              {/* <button
+              {<button
                 onClick={() => setShowCreateDropdown(false)}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3"
               >
@@ -125,7 +169,7 @@ const Header = ({ onToggleSidebar, onLogout }) => {
                   className="w-5 h-5 flex-shrink-0"
                 />
                 <span className="text-gray-700">Task</span>
-              </button> */}
+              </button>}
 
               <button
                 onClick={handleCreateProject}
@@ -139,7 +183,7 @@ const Header = ({ onToggleSidebar, onLogout }) => {
                 <span className="text-gray-700">Project</span>
               </button>
 
-              {/* <button
+              {<button
                 onClick={() => setShowCreateDropdown(false)}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3"
               >
@@ -149,9 +193,9 @@ const Header = ({ onToggleSidebar, onLogout }) => {
                   className="w-5 h-5 flex-shrink-0"
                 />
                 <span className="text-gray-700">Message</span>
-              </button> */}
+              </button>}
 
-              {/* <button
+              {<button
                 onClick={() => setShowCreateDropdown(false)}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3"
               >
@@ -161,11 +205,11 @@ const Header = ({ onToggleSidebar, onLogout }) => {
                   className="w-5 h-5 flex-shrink-0"
                 />
                 <span className="text-gray-700">Team</span>
-              </button> */}
+              </button>}
 
-              {/* <div className="border-t border-gray-200 my-2"></div> */}
+              {<div className="border-t border-gray-200 my-2"></div>}
 
-              {/* <button
+              {<button
                 onClick={() => setShowCreateDropdown(false)}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3"
               >
@@ -175,7 +219,7 @@ const Header = ({ onToggleSidebar, onLogout }) => {
                   className="w-5 h-5 flex-shrink-0"
                 />
                 <span className="text-gray-700">Invite</span>
-              </button> */}
+              </button>}
             </div>
           )}
         </div>
@@ -291,6 +335,20 @@ const Header = ({ onToggleSidebar, onLogout }) => {
                 />
                 <span className="text-gray-700">Profile</span>
               </button>
+              <button
+                onClick={() => {
+                  setShowProfileDropdown(false);
+                  setShowArchiveModal(true);
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-3"
+              >
+                <img
+                  src={ArchiveIcon}
+                  alt="Archive"
+                  className="w-5 h-5 flex-shrink-0"
+                />
+                <span className="text-gray-700">Archive</span>
+              </button>
             </div>
             <div className="border-t border-gray-200 my-0"></div>
             <div className="py-2">
@@ -312,6 +370,57 @@ const Header = ({ onToggleSidebar, onLogout }) => {
           </div>
         )}
       </div>
+      {/* Archive Modal */}
+      {showArchiveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
+            <h2 className="text-xl font-semibold mb-4">Archived Projects</h2>
+            {archivedList.length === 0 ? (
+              <p className="text-gray-500">No archived projects.</p>
+            ) : (
+              <ul className="space-y-5 max-h-80 overflow-auto">
+                {archivedList.map((proj) => {
+                  const ownerName =
+                    proj.owner?.username ||
+                    proj.ownerName ||
+                    proj.createdBy ||
+                    proj.createdByName ||
+                    "No owner";
+                  return (
+                    <li
+                      key={proj.id}
+                      className="flex items-center justify-between"
+                    >
+                      <div>
+                        <span className="font-semibold">{proj.title}</span>
+                        <span className="ml-2 text-sm text-gray-500">
+                          ({ownerName})
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRestore(proj, "Active")}
+                          className="text-xs bg-cyan-500 text-white px-3 py-2 rounded hover:bg-cyan-600"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowArchiveModal(false)}
+                className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

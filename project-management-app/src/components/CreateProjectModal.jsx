@@ -6,26 +6,26 @@ const CreateProjectModal = ({ onClose, onCreate, projectsCount = 0 }) => {
     // Form state
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [priority, setPriority] = useState('Medium');
-    const [status, setStatus] = useState('NotStarted');
+    const [goal, setGoal] = useState('');
+    const [priority, setPriority] = useState('low');
+    const [status, setStatus] = useState('active');
+    const initialColor = projectColors[projectsCount % projectColors.length];
+    const [color, setColor] = useState(initialColor);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (title.trim() && startDate && endDate) {
-            // Select the next color in order based on existing projects length
-            const colorIndex = projectsCount % projectColors.length;
-            const selectedColor = projectColors[colorIndex];
-
+        if (title.trim() && goal.trim() && startDate && endDate && color) {
             onCreate({
                 title,
                 description,
+                goal,
                 priority,
                 status,
                 startDate,
                 endDate,
-                color: selectedColor,
+                color,
             });
         }
     };
@@ -60,9 +60,27 @@ const CreateProjectModal = ({ onClose, onCreate, projectsCount = 0 }) => {
                         <input
                             type="text"
                             id="title"
+                            name="title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="My project"
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors duration-200"
+                            required
+                        />
+                    </div>
+
+                    {/* Goal */}
+                    <div className="mb-4">
+                        <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-2">
+                            Goal
+                        </label>
+                        <input
+                            type="text"
+                            id="goal"
+                            name="goal"
+                            value={goal}
+                            onChange={(e) => setGoal(e.target.value)}
+                            placeholder="Project goal"
                             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors duration-200"
                             required
                         />
@@ -95,9 +113,9 @@ const CreateProjectModal = ({ onClose, onCreate, projectsCount = 0 }) => {
                                 onChange={(e) => setPriority(e.target.value)}
                                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors duration-200"
                             >
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
                             </select>
                         </div>
                         <div>
@@ -110,11 +128,27 @@ const CreateProjectModal = ({ onClose, onCreate, projectsCount = 0 }) => {
                                 onChange={(e) => setStatus(e.target.value)}
                                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors duration-200"
                             >
-                                <option value="NotStarted">Not Started</option>
-                                <option value="Active">Active</option>
-                                <option value="Paused">Paused</option>
-                                <option value="Completed">Completed</option>
+                                <option value="active">Active</option>
+                                <option value="paused">Paused</option>
+                                <option value="completed">Completed</option>
+                                <option value="archived">Archived</option>
                             </select>
+                        </div>
+                    </div>
+
+                    {/* Color Picker */}
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            {projectColors.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setColor(c)}
+                                    className={`w-8 h-8 rounded-full border-2 ${color === c ? 'border-blue-600' : 'border-transparent'}`}
+                                    style={{ backgroundColor: c }}
+                                />
+                            ))}
                         </div>
                     </div>
 

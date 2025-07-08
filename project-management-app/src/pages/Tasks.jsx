@@ -26,9 +26,9 @@ const getColumnTasks = (tasks) => ({
   completed: tasks.filter(t => t.status === 'completed'),
 });
 
-const Tasks = ({ onLogout, projects, projectTasks, userInfo }) => {
+const Tasks = ({ onLogout, projects = [], projectTasks = [], userInfo = {} }) => {
   // const { tasks, addTask, updateTask } = useTasks();
-  const [tasks, setTasks] = useState(projectTasks);
+  const [tasks, setTasks] = useState(Array.isArray(projectTasks) ? projectTasks : []);
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);

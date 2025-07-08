@@ -44,3 +44,13 @@ export const updateProject = async (projectId, data) => {
 export const deleteProject = async (projectId) => {
   return await requestWrapper(`${PROJECT_API_URL}/${projectId}`, "DELETE");
 };
+
+// Assign a user to a project (makes them a member)
+export const addProjectMember = async (projectId, userId) => {
+  // Updated route: POST /api/Project/{projectId}/members/{userId}
+  // Using POST since we are creating a new membership resource on the server
+  return await requestWrapper(
+    `${PROJECT_API_URL}/assign-user/${projectId}/${userId}`,
+    "POST"
+  );
+};

@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -13,6 +12,7 @@ import { loginAsync, signupAsync, isTokenValid, refreshTokens, getUserId } from 
 import * as ProjectAPI from './API/ProjectAPI';
 import { getAllUsers } from './API/UserAPI';
 import * as ProjectTaskAPI from './API/ProjectTaskAPI';
+import { getAllComments } from './API/CommentAPI';
 import CreateProjectModal from './components/CreateProjectModal';
 import * as signalR from "@microsoft/signalr"
 import { getNotificationsByUserId } from './API/NotificationAPI';
@@ -22,11 +22,10 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState([]);
   const [projectTasks, setProjectTasks] = useState([]);
-  const [users, setUsers] = useState([]); // Store the logged in user's info like id, name, email, and role
+  const [users, setUsers] = useState([]);
   const [userInfo, setUserInfo] = useState({});
   const [notifications, setNotifications] = useState({});
   const [loadingProjects, setLoadingProjects] = useState(true);
-  // State to control the global Create Project modal
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   // Create signalR connection to listen to notification from server
   let connection;
@@ -44,9 +43,7 @@ function App() {
 
   useEffect(() => {
     async function runApp() {
-      // When the app loads, check if token is valid
       var result = isTokenValid();
-      // No 'tokens' key found in localStorage
       if (result === null) return;
       if (!result.isValid) {
         try {
@@ -125,7 +122,7 @@ function App() {
     } catch (error) {
       setUsers([]);
     }
-  }
+  };
 
   const fetchProjects = async () => {
     setLoadingProjects(true);
@@ -189,9 +186,16 @@ function App() {
   // Handle creation of a new project from the modal
   const handleProjectCreate = async (projectData) => {
     try {
-      const created = await ProjectAPI.addProject(projectData);
-      // Ensure projects list is updated immediately in state
-      setProjects((prev) => [...prev, created]);
+      const response = await ProjectAPI.addProject(projectData);
+      // response is AxiosResponse; use its data property
+      const newProject = Array.isArray(response?.data) ? response.data[0] : (response?.data ?? null);
+
+      if (newProject) {
+        setProjects((prev) => [...prev, newProject]);
+      } else {
+        // Fallback: refetch all projects if format unexpected
+        await fetchProjects();
+      }
     } catch (error) {
       console.error('Error creating project:', error);
     }
@@ -232,15 +236,12 @@ function App() {
           path="/tasks"
           element={
             <ProtectedRoute>
-              <Tasks onLogout={handleLogout} projects={projects} projectTasks={projectTasks} />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/projects"
-          element={
-            <ProtectedRoute>
-              <Projects onLogout={handleLogout} />
+              <Tasks
+                onLogout={handleLogout}
+                projects={projects}
+                projectTasks={projectTasks}
+                userInfo={userInfo}
+              />
             </ProtectedRoute>
           }
         />
@@ -249,7 +250,7 @@ function App() {
           path="/projects/:projectId"
           element={
             <ProtectedRoute>
-              <ProjectDetails onLogout={handleLogout} projects={projects} onUpdateProject={handleUpdateProject} />
+              <ProjectDetails onLogout={handleLogout} projects={projects} projectTasks={projectTasks} onUpdateProject={handleUpdateProject} users={users} />
             </ProtectedRoute>
           }
         />

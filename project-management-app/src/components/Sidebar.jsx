@@ -14,6 +14,12 @@ const Sidebar = ({ onLogout, projects = [] }) => {
         return saved ? JSON.parse(saved) : false;
     });
 
+    // Filter projects so that archived ones are not shown in the sidebar
+    const filteredProjects = projects.filter(p => {
+        const status = (p.status || '').toLowerCase();
+        return status !== 'archived' && !p.archived;
+    });
+
     // Save to localStorage whenever projectsOpen changes
     useEffect(() => {
         localStorage.setItem('sidebarProjectsOpen', JSON.stringify(projectsOpen));
@@ -59,8 +65,7 @@ const Sidebar = ({ onLogout, projects = [] }) => {
                         <div>
                             <button
                                 onClick={() => setProjectsOpen(!projectsOpen)}
-                                className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg font-medium transition-colors duration-200 ${projectsOpen ? 'bg-cyan-50 text-cyan-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                    }`}
+                                className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg font-medium transition-colors duration-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                             >
                                 <div className="flex items-center gap-3">
                                     <img src={ProjectsIcon} alt="Projects" className="w-5 h-5 flex-shrink-0" />
@@ -76,9 +81,9 @@ const Sidebar = ({ onLogout, projects = [] }) => {
                                 </svg>
                             </button>
                             {/* Project list */}
-                            {projectsOpen && projects.length > 0 && (
+                            {projectsOpen && filteredProjects.length > 0 && (
                                 <ul className="mt-1 pl-2 space-y-0.5">
-                                    {projects.map((project) => (
+                                    {filteredProjects.map((project) => (
                                         <li key={project.id}>
                                             <NavLink
                                                 to={`/projects/${project.id}`}

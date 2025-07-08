@@ -94,35 +94,38 @@ export const getTaskComments = async (taskId) => {
   return await requestWrapper(`${TASK_API_URL}/${taskId}/comments`, "GET");
 };
 
-export const addTaskAttachment = async (taskId, file) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  // Get authentication tokens
-  var { isValid, accessToken, refreshToken, userId } = isTokenValid();
-  
-  // Refresh tokens when access token is expired
-  if (!isValid) {
-    try {
-      accessToken = await refreshTokens(userId, refreshToken);
-    } catch (e) {
-      throw e;
-    }
-  }
-  
-  // Make the request with FormData
-  return await axios.post(`${TASK_API_URL}/${taskId}/attachments`, formData, {
-    headers: { 
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'multipart/form-data'
-    },
-  });
+export const addSubtask = async (taskId, userId, subtask) => {
+  return await requestWrapper(`${TASK_API_URL}/${taskId}/${userId}/subtasks`, "POST", subtask);
 };
+// export const addTaskAttachment = async (taskId, file) => {
+//   const formData = new FormData();
+//   formData.append('file', file);
+  
+//   // Get authentication tokens
+//   var { isValid, accessToken, refreshToken, userId } = isTokenValid();
+  
+//   // Refresh tokens when access token is expired
+//   if (!isValid) {
+//     try {
+//       accessToken = await refreshTokens(userId, refreshToken);
+//     } catch (e) {
+//       throw e;
+//     }
+//   }
+  
+//   // Make the request with FormData
+//   return await axios.post(`${TASK_API_URL}/${taskId}/attachments`, formData, {
+//     headers: { 
+//       Authorization: `Bearer ${accessToken}`,
+//       'Content-Type': 'multipart/form-data'
+//     },
+//   });
+// };
 
-export const getTaskAttachments = async (taskId) => {
-  return await requestWrapper(`${TASK_API_URL}/${taskId}/attachments`, "GET");
-};
+// export const getTaskAttachments = async (taskId) => {
+//   return await requestWrapper(`${TASK_API_URL}/${taskId}/attachments`, "GET");
+// };
 
-export const removeTaskAttachment = async (taskId, attachmentId) => {
-  return await requestWrapper(`${TASK_API_URL}/${taskId}/attachments/${attachmentId}`, "DELETE");
-}; 
+// export const removeTaskAttachment = async (taskId, attachmentId) => {
+//   return await requestWrapper(`${TASK_API_URL}/${taskId}/attachments/${attachmentId}`, "DELETE");
+// }; 
