@@ -245,12 +245,22 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* <Route
+          path="/projects"
+          element={
+            <ProtectedRoute>
+              <ProjectDetails onLogout={handleLogout}
+              userInfo={userInfo}
+               />
+            </ProtectedRoute>
+          }
+        /> */}
         {/* Project Details */}
         <Route
           path="/projects/:projectId"
           element={
             <ProtectedRoute>
-              <ProjectDetails onLogout={handleLogout} projects={projects} projectTasks={projectTasks} onUpdateProject={handleUpdateProject} users={users} />
+              <ProjectDetails onLogout={handleLogout} projects={projects} projectTasks={projectTasks} onUpdateProject={handleUpdateProject} users={users} userInfo={userInfo}/>
             </ProtectedRoute>
           }
         />
