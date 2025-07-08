@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { FiPaperclip, FiX, FiDownload, FiFile } from 'react-icons/fi';
 import * as ProjectTaskAPI from '../API/ProjectTaskAPI';
 import * as CommentAPI from '../API/CommentAPI';
+import { getAttachmentsByProjectTaskId, downloadAttachment, uploadAttachment, deleteAttachment } from '../API/AttachmentAPI';
 import { getUserId } from '../API/AuthAPI';
 import CalendarIcon from '../assets/calendar-days-svgrepo-com.svg';
+import { people } from '../data/people';
 
 const statusColors = {
   completed: 'bg-green-700 text-white',
