@@ -6,7 +6,6 @@ import ProjectsIcon from '../assets/folders-svgrepo-com.svg';
 import TeamIcon from '../assets/team-svgrepo-com.svg';
 import TasksIcon from '../assets/to-do-svgrepo-com.svg';
 import LogoutIcon from '../assets/logout-svgrepo-com.svg';
-import { inboxMessages } from '../data/inbox';
 
 const Sidebar = ({ onLogout, projects = [] }) => {
     // Initialize state from localStorage, default to false if not found
@@ -14,8 +13,6 @@ const Sidebar = ({ onLogout, projects = [] }) => {
         const saved = localStorage.getItem('sidebarProjectsOpen');
         return saved ? JSON.parse(saved) : false;
     });
-
-    const unreadCount = inboxMessages.filter(m => !m.isRead).length;
 
     // Filter projects so that archived ones are not shown in the sidebar
     const filteredProjects = projects.filter(p => {
@@ -27,6 +24,7 @@ const Sidebar = ({ onLogout, projects = [] }) => {
     useEffect(() => {
         localStorage.setItem('sidebarProjectsOpen', JSON.stringify(projectsOpen));
     }, [projectsOpen]);
+
 
     // Function to get NavLink classes with active state
     const getLinkClasses = ({ isActive }) => {
@@ -56,11 +54,11 @@ const Sidebar = ({ onLogout, projects = [] }) => {
                         <NavLink to="/inbox" className={getLinkClasses}>
                             <img src={InboxIcon} alt="Inbox" className="w-5 h-5 flex-shrink-0" />
                             <span className="truncate">Inbox</span>
-                            {unreadCount > 0 && (
+                            {/* {unreadCount > 0 && (
                                 <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
                                     {unreadCount}
                                 </span>
-                            )}
+                            )} */}
                         </NavLink>
                     </li>
                     <li>
