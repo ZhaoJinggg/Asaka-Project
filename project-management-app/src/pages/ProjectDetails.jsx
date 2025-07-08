@@ -11,7 +11,7 @@ import OverviewIcon from '../assets/overview-svgrepo-com.svg';
 import BoardIcon from '../assets/board-svgrepo-com.svg';
 import FilesIcon from '../assets/folder-arrow-up-svgrepo-com.svg';
 
-const ProjectDetails = ({ onLogout, projects = [], onUpdateProject, users = [], userInfo }) => {
+const ProjectDetails = ({ onLogout, projects = [], projectTasks = [], onUpdateProject, users = [], userInfo }) => {
     const { projectId } = useParams();
     const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'board', 'files'
     const navigate = useNavigate();
