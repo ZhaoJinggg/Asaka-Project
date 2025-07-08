@@ -45,16 +45,12 @@ export const deleteTask = async (taskId) => {
   return await requestWrapper(`${TASK_API_URL}/${taskId}`, "DELETE");
 };
 
-export const updateTaskStatus = async (taskId, status) => {
-  return await requestWrapper(`${TASK_API_URL}/${taskId}/status`, "PUT", {
-    status: status,
-  });
+export const updateTaskStatus = async (taskId) => {
+  return await requestWrapper(`${TASK_API_URL}/${taskId}`, "PUT");
 };
 
 export const assignTaskToUser = async (taskId, userId) => {
-  return await requestWrapper(`${TASK_API_URL}/${taskId}/assign`, "PUT", {
-    assigneeId: userId,
-  });
+  return await requestWrapper(`${TASK_API_URL}/assign-user/${taskId}/${userId}`, "POST");
 };
 
 export const getTasksByStatus = async (status) => {
