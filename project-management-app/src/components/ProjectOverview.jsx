@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { projectColors } from '../data/colors';
 import { updateProject, addProjectMember, getProjectById } from '../API/ProjectAPI';
+import { getAllUsers } from '../API/UserAPI';
+import { getUserId } from '../API/AuthAPI';
 
-const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
+const ProjectOverview = ({ project, onUpdateProject, users = [], userInfo }) => {
     const [description, setDescription] = useState('');
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [goal, setGoal] = useState('');
     const [isEditingGoal, setIsEditingGoal] = useState(false);
     // Project members list – fetched from backend (owner plus others)
     const [members, setMembers] = useState([]);
-
     // Trigger to re-fetch members after changes
     const [memberRefreshFlag, setMemberRefreshFlag] = useState(0);
+    const [currentUserRole, setCurrentUserRole] = useState(undefined);
 
     // Fetch members list from backend whenever project changes or refresh flag increments
     useEffect(() => {
@@ -138,6 +140,12 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
             endDate: project.endDate ? project.endDate.slice(0, 10) : '',
         });
     }, [project]);
+
+    useEffect(() => {
+      if (userInfo?.role === 'contributor' && detailsEditMode) {
+        setDetailsEditMode(false);
+      }
+    }, [userInfo?.role, detailsEditMode]);
 
     const handleSaveGoal = async () => {
         try {
@@ -288,6 +296,21 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
 
     const getInitials = (name) => (name || '').split(' ').map(n => n[0]).join('').toUpperCase();
 
+    useEffect(() => {
+        const fetchRole = async () => {
+            try {
+                const response = await getAllUsers();
+                const users = response.data || [];
+                const currentUserId = await getUserId();
+                const user = users.find(u => String(u.id) === String(currentUserId));
+                setCurrentUserRole(user?.role);
+            } catch (error) {
+                setCurrentUserRole(undefined);
+            }
+        };
+        fetchRole();
+    }, []);
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column */}
@@ -302,11 +325,13 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                 onChange={(e) => setDescription(e.target.value)}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                                 rows="4"
+                                readOnly={currentUserRole === 'contributor'}
                             />
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleSaveDescription}
-                                    className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600"
+                                    disabled={currentUserRole === 'contributor'}
+                                    className={`px-4 py-2 rounded-lg font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600'}`}
                                 >
                                     Save
                                 </button>
@@ -323,8 +348,10 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                         </div>
                     ) : (
                         <div
-                            onClick={() => setIsEditingDescription(true)}
-                            className="text-gray-600 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors"
+                            onClick={() => {
+                                if (currentUserRole !== 'contributor') setIsEditingDescription(true);
+                            }}
+                            className={`text-gray-600 ${currentUserRole !== 'contributor' ? 'cursor-pointer hover:bg-gray-50' : ''} p-3 rounded-lg transition-colors`}
                         >
                             {description}
                         </div>
@@ -338,10 +365,11 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                         {detailsEditMode ? (
                             <div className="flex gap-2">
                                 <button
-                                    onClick={handleSaveDetails}
-                                    className="px-3 py-1 rounded-lg bg-cyan-500 text-white text-sm hover:bg-cyan-600"
+                                  onClick={handleSaveDetails}
+                                  disabled={currentUserRole === 'contributor'}
+                                  className={`px-3 py-1 rounded-lg text-sm font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600'}`}
                                 >
-                                    Save
+                                  Save
                                 </button>
                                 <button
                                     onClick={() => {
@@ -360,10 +388,11 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                             </div>
                         ) : (
                             <button
-                                onClick={() => setDetailsEditMode(true)}
-                                className="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200"
+                              onClick={() => setDetailsEditMode(true)}
+                              disabled={currentUserRole === 'contributor'}
+                              className={`px-3 py-1 rounded-lg text-sm font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                             >
-                                Edit
+                              Edit
                             </button>
                         )}
                     </div>
@@ -377,6 +406,7 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                     value={editValues.priority}
                                     onChange={(e) => setEditValues(v => ({ ...v, priority: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    disabled={currentUserRole === 'contributor'}
                                 >
                                     <option>Low</option>
                                     <option>Medium</option>
@@ -390,6 +420,7 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                     value={editValues.status}
                                     onChange={(e) => setEditValues(v => ({ ...v, status: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    disabled={currentUserRole === 'contributor'}
                                 >
                                     <option>Active</option>
                                     <option>Paused</option>
@@ -405,6 +436,7 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                     value={editValues.startDate}
                                     onChange={(e) => setEditValues(v => ({ ...v, startDate: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    disabled={currentUserRole === 'contributor'}
                                 />
                             </div>
                             {/* End Date */}
@@ -415,6 +447,7 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                     value={editValues.endDate}
                                     onChange={(e) => setEditValues(v => ({ ...v, endDate: e.target.value }))}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    disabled={currentUserRole === 'contributor'}
                                 />
                             </div>
                         </div>
@@ -450,11 +483,13 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                 value={goal}
                                 onChange={(e) => setGoal(e.target.value)}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                                readOnly={currentUserRole === 'contributor'}
                             />
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleSaveGoal}
-                                    className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600"
+                                    disabled={currentUserRole === 'contributor'}
+                                    className={`px-4 py-2 rounded-lg font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600'}`}
                                 >
                                     Save
                                 </button>
@@ -471,8 +506,10 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                         </div>
                     ) : (
                         <div
-                            onClick={() => setIsEditingGoal(true)}
-                            className="text-gray-600 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors"
+                            onClick={() => {
+                                if (currentUserRole !== 'contributor') setIsEditingGoal(true);
+                            }}
+                            className={`text-gray-600 ${currentUserRole !== 'contributor' ? 'cursor-pointer hover:bg-gray-50' : ''} p-3 rounded-lg transition-colors`}
                         >
                             {goal}
                         </div>
@@ -510,6 +547,8 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                         <button
                             onClick={() => setShowAddMemberModal(true)}
                             className="w-full flex items-center gap-3 p-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
+                            disabled={currentUserRole === 'contributor'}
+                            style={currentUserRole === 'contributor' ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                         >
                             <div className="w-10 h-10 border-2 border-dashed border-gray-400 rounded-full flex items-center justify-center">
                                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -549,6 +588,7 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                         placeholder="e.g., jacob or jacob@gmail.com"
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                         required
+                                        disabled={currentUserRole === 'contributor'}
                                     />
                                     {suggestions.length > 0 && (
                                         <ul className="border border-gray-200 rounded mt-1 max-h-40 overflow-auto bg-white shadow z-10 absolute w-full">
@@ -557,6 +597,7 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                                     key={u.id}
                                                     onClick={() => handleSelectSuggestion(u)}
                                                     className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                                                    style={currentUserRole === 'contributor' ? { pointerEvents: 'none', opacity: 0.5 } : {}}
                                                 >
                                                     {u.username || u.name} <span className="text-gray-500 text-xs">{u.email}</span>
                                                 </li>
@@ -566,7 +607,7 @@ const ProjectOverview = ({ project, onUpdateProject, users = [] }) => {
                                 </div>
                             </div>
                             <div className="flex gap-3 mt-6">
-                                <button type="submit" className="flex-1 bg-cyan-500 text-white py-2 rounded-lg hover:bg-cyan-600">Add</button>
+                                <button type="submit" className="flex-1 bg-cyan-500 text-white py-2 rounded-lg hover:bg-cyan-600" disabled={currentUserRole === 'contributor'}>Add</button>
                                 <button type="button" onClick={() => setShowAddMemberModal(false)} className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300">Cancel</button>
                             </div>
                         </form>

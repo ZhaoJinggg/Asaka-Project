@@ -5,6 +5,8 @@ import * as CommentAPI from '../API/CommentAPI';
 import * as ProjectAPI from '../API/ProjectAPI';
 import { getUserId } from '../API/AuthAPI';
 import CalendarIcon from '../assets/calendar-days-svgrepo-com.svg';
+import { people } from '../data/people';
+import { getAllUsers } from '../API/UserAPI';
 
 const statusColors = {
   completed: 'bg-green-700 text-white',
@@ -18,7 +20,7 @@ const priorityColors = {
   high: 'bg-orange-400 text-white',
 };
 
-function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
+function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment, userInfo }) {
   const [editTask, setEditTask] = useState({ ...task, attachments: task.attachments || [] });
   const [loading, setLoading] = useState(false);
   const [assigneeQuery, setAssigneeQuery] = useState('');
@@ -45,7 +47,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
   const [allTasks, setAllTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [subtasks, setSubtasks] = useState([]);
-  const [people, setPeople] = useState([]); // project members for assignee dropdown
+  const [currentUserRole, setCurrentUserRole] = useState(undefined);
 
   // Debug logs
   console.log('TaskDetailsModal taskComments state:', taskComments);
@@ -151,6 +153,21 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
     fetchTaskandComment();
     // return () => { isMounted = false; };
   }, [task?.id]);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const response = await getAllUsers();
+        const users = response.data || [];
+        const currentUserId = await getUserId();
+        const user = users.find(u => String(u.id) === String(currentUserId));
+        setCurrentUserRole(user?.role);
+      } catch (error) {
+        setCurrentUserRole(undefined);
+      }
+    };
+    fetchRole();
+  }, []);
 
   // Filter people by query
   const filteredPeople = assigneeQuery
@@ -354,6 +371,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                       className="ml-2 text-gray-400 hover:text-red-500 text-lg font-bold"
                       onClick={() => setEditTask(t => ({ ...t, assignee: null }))}
                       aria-label="Remove assignee"
+                      disabled={currentUserRole === 'contributor'}
                     >
                       ×
                     </button>
@@ -373,6 +391,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                       onFocus={() => setShowAssigneeDropdown(true)}
                       onBlur={() => setTimeout(() => setShowAssigneeDropdown(false), 150)}
                       autoComplete="off"
+                      disabled={currentUserRole === 'contributor'}
                     />
                     {showAssigneeDropdown && filteredPeople.length > 0 && (
                       <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-56 overflow-y-auto">
@@ -386,6 +405,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                               setAssigneeQuery('');
                               setShowAssigneeDropdown(false);
                             }}
+                            disabled={currentUserRole === 'contributor'}
                           >
                             <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-base ${person.color?.startsWith('#') ? '' : person.color} text-white`} style={person.color?.startsWith('#') ? { backgroundColor: person.color } : {}}>
                               {person.initials}
@@ -412,6 +432,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                     className="bg-transparent text-black focus:outline-none"
                     value={editTask.endDate ? editTask.endDate.slice(0, 10) : ''}
                     onChange={e => setEditTask(t => ({ ...t, endDate: e.target.value }))}
+                    disabled={currentUserRole === 'contributor'}
                   />
                 </div>
               </div>
@@ -439,6 +460,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                       className={`rounded px-2 py-1 text-xs font-semibold ml-auto ${priorityColors[editTask.priority?.value || editTask.priority || 'medium']}`}
                       value={editTask.priority?.value || editTask.priority || 'medium'}
                       onChange={e => setEditTask(t => ({ ...t, priority: e.target.value }))}
+                      disabled={currentUserRole === 'contributor'}
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -452,6 +474,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                       className={`rounded px-2 py-1 text-xs font-semibold ml-auto ${statusColors[editTask.status || 'todo']}`}
                       value={editTask.status}
                       onChange={e => setEditTask(t => ({ ...t, status: e.target.value }))}
+                      disabled={false}
                     >
                       <option value="todo">To do</option>
                       <option value="in_progress">In progress</option>
@@ -470,6 +493,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                 placeholder="What is this task about?"
                 value={editTask.description || ''}
                 onChange={e => setEditTask(t => ({ ...t, description: e.target.value }))}
+                disabled={currentUserRole === 'contributor'}
               />
             </div>
             {/* Attachments */}
@@ -488,6 +512,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                         onClick={() => handleRemoveAttachment(attachment.id)}
                         className="text-gray-400 hover:text-red-500 p-1"
                         aria-label="Remove attachment"
+                        disabled={currentUserRole === 'contributor'}
                       >
                         <FiX size={16} />
                       </button>
@@ -503,10 +528,12 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                   onChange={handleFileSelect}
                   className="hidden"
                   accept="*/*"
+                  disabled={currentUserRole === 'contributor'}
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-2 px-3 py-2 border border-gray-400 rounded text-sm text-black hover:bg-gray-100"
+                  disabled={currentUserRole === 'contributor'}
                 >
                   <FiPaperclip size={16} />
                   Add files
@@ -528,88 +555,91 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
                 )}
               </div>
               {/* Add Subtask Button and Form BELOW the list (if you want to keep it) */}
-              {
-                !showSubtaskForm && (
-                  <button
-                    className="mt-2 px-3 py-2 border border-gray-400 rounded text-sm text-black hover:bg-gray-100 flex items-center gap-2"
-                    onClick={() => setShowSubtaskForm(true)}
-                  >
-                    <span className="text-lg">+</span> Add Subtask
-                  </button>
-                )
-              }
-              {
-                showSubtaskForm && (
-                  <div className="mt-2 p-3 bg-gray-50 rounded border">
-                    <div className="flex flex-col gap-2">
+              {!showSubtaskForm && (
+                <button
+                  className="mt-2 px-3 py-2 border border-gray-400 rounded text-sm text-black hover:bg-gray-100 flex items-center gap-2"
+                  onClick={() => setShowSubtaskForm(true)}
+                  disabled={currentUserRole === 'contributor'}
+                >
+                  <span className="text-lg">+</span> Add Subtask
+                </button>
+              )}
+              {showSubtaskForm && (
+                <div className="mt-2 p-3 bg-gray-50 rounded border">
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      className="border rounded px-2 py-1"
+                      placeholder="Subtask title"
+                      value={newSubtask.title}
+                      onChange={e => setNewSubtask(s => ({ ...s, title: e.target.value }))}
+                      disabled={currentUserRole === 'contributor'}
+                    />
+                    <textarea
+                      className="border rounded px-2 py-1"
+                      placeholder="Description"
+                      value={newSubtask.description}
+                      onChange={e => setNewSubtask(s => ({ ...s, description: e.target.value }))}
+                      disabled={currentUserRole === 'contributor'}
+                    />
+                    <div className="flex gap-2">
                       <input
-                        type="text"
-                        className="border rounded px-2 py-1"
-                        placeholder="Subtask title"
-                        value={newSubtask.title}
-                        onChange={e => setNewSubtask(s => ({ ...s, title: e.target.value }))}
+                        type="date"
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.startDate}
+                        onChange={e => setNewSubtask(s => ({ ...s, startDate: e.target.value }))}
+                        disabled={currentUserRole === 'contributor'}
                       />
-                      <textarea
-                        className="border rounded px-2 py-1"
-                        placeholder="Description"
-                        value={newSubtask.description}
-                        onChange={e => setNewSubtask(s => ({ ...s, description: e.target.value }))}
+                      <input
+                        type="date"
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.endDate}
+                        onChange={e => setNewSubtask(s => ({ ...s, endDate: e.target.value }))}
+                        disabled={currentUserRole === 'contributor'}
                       />
-                      <div className="flex gap-2">
-                        <input
-                          type="date"
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.startDate}
-                          onChange={e => setNewSubtask(s => ({ ...s, startDate: e.target.value }))}
-                        />
-                        <input
-                          type="date"
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.endDate}
-                          onChange={e => setNewSubtask(s => ({ ...s, endDate: e.target.value }))}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <select
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.priority}
-                          onChange={e => setNewSubtask(s => ({ ...s, priority: e.target.value }))}
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                        </select>
-                        <select
-                          className="border rounded px-2 py-1 flex-1"
-                          value={newSubtask.status}
-                          onChange={e => setNewSubtask(s => ({ ...s, status: e.target.value }))}
-                        >
-                          <option value="todo">To do</option>
-                          <option value="in_progress">In progress</option>
-                          <option value="completed">Completed</option>
-                        </select>
-                      </div>
-                      {subtaskError && <div className="text-red-500 text-sm">{subtaskError}</div>}
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          className="bg-cyan-600 text-white px-3 py-1 rounded"
-                          onClick={handleAddSubtask}
-                          disabled={!newSubtask.title.trim() || addingSubtask}
-                        >
-                          {addingSubtask ? 'Adding...' : 'Add Subtask'}
-                        </button>
-                        <button
-                          className="bg-gray-200 text-gray-700 px-3 py-1 rounded"
-                          onClick={() => { setShowSubtaskForm(false); setNewSubtask({ title: '', description: '', startDate: '', endDate: '', priority: 'medium', status: 'todo' }); setSubtaskError(''); }}
-                          disabled={addingSubtask}
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <select
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.priority}
+                        onChange={e => setNewSubtask(s => ({ ...s, priority: e.target.value }))}
+                        disabled={currentUserRole === 'contributor'}
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                      <select
+                        className="border rounded px-2 py-1 flex-1"
+                        value={newSubtask.status}
+                        onChange={e => setNewSubtask(s => ({ ...s, status: e.target.value }))}
+                        disabled={currentUserRole === 'contributor'}
+                      >
+                        <option value="todo">To do</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                    {subtaskError && <div className="text-red-500 text-sm">{subtaskError}</div>}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        className="bg-cyan-600 text-white px-3 py-1 rounded"
+                        onClick={handleAddSubtask}
+                        disabled={!newSubtask.title.trim() || addingSubtask || currentUserRole === 'contributor'}
+                      >
+                        {addingSubtask ? 'Adding...' : 'Add Subtask'}
+                      </button>
+                      <button
+                        className="bg-gray-200 text-gray-700 px-3 py-1 rounded"
+                        onClick={() => { setShowSubtaskForm(false); setNewSubtask({ title: '', description: '', startDate: '', endDate: '', priority: 'medium', status: 'todo' }); setSubtaskError(''); }}
+                        disabled={addingSubtask || currentUserRole === 'contributor'}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
-                )
-              }
+                </div>
+              )}
             </div>
             {/* --- COMMENT SECTION --- */}
             <div className="mt-6">
@@ -645,33 +675,33 @@ function TaskDetailsModal({ task, onClose, onSave, projects, onAddComment }) {
             </div>
           </div>
         </div>
-        {/* Save/Cancel */}
-        <div className="flex justify-end gap-2 mt-8 p-4 bg-white border-t border-gray-100 sticky bottom-0 left-0 right-0 z-10">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 rounded-lg bg-cyan-500 text-white hover:bg-cyan-600 font-semibold"
-          >
-            Save
-          </button>
-        </div>
-        <style jsx>{`
-          .animate-slide-in {
-            transform: translateX(100%);
-            animation: slideInDrawer 0.3s forwards;
-          }
-          @keyframes slideInDrawer {
-            to {
-              transform: translateX(0);
-            }
-          }
-        `}</style>
       </div>
+      {/* Save/Cancel */}
+      <div className="flex justify-end gap-2 mt-8 p-4 bg-white border-t border-gray-100 sticky bottom-0 left-0 right-0 z-10">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 rounded-lg font-semibold bg-cyan-500 text-white hover:bg-cyan-600"
+        >
+          Save
+        </button>
+      </div>
+      <style jsx>{`
+        .animate-slide-in {
+          transform: translateX(100%);
+          animation: slideInDrawer 0.3s forwards;
+        }
+        @keyframes slideInDrawer {
+          to {
+            transform: translateX(0);
+          }
+        }
+      `}</style>
       {/* Subtask detail modal */}
       {
         showSubtaskModal && (

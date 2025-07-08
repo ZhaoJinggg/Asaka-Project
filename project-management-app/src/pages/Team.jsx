@@ -11,7 +11,7 @@ const Team = ({ onLogout, projects = [], teamMembers = [] }) => {
     const filteredMembers = members;
 
     return (
-        <Layout onLogout={onLogout} projects={projects}>
+        <Layout onLogout={onLogout} projects={projects} >
             <div className="flex-1 flex flex-col bg-gray-50 min-h-screen">
                 <div className="flex-1 flex flex-col items-center justify-start px-4 py-8">
                     {/* Header */}

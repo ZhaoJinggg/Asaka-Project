@@ -14,6 +14,8 @@ import { getAllUsers } from './API/UserAPI';
 import * as ProjectTaskAPI from './API/ProjectTaskAPI';
 import { getAllComments } from './API/CommentAPI';
 import CreateProjectModal from './components/CreateProjectModal';
+import * as signalR from "@microsoft/signalr"
+import { getNotificationsByUserId } from './API/NotificationAPI';
 
 function App() {
   const navigate = useNavigate();
@@ -22,9 +24,22 @@ function App() {
   const [projectTasks, setProjectTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [userInfo, setUserInfo] = useState({});
+  const [notifications, setNotifications] = useState({});
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+  // Create signalR connection to listen to notification from server
+  let connection;
+  
+  const buildSignalRConection = async (accessToken) => {
+    return new signalR.HubConnectionBuilder()
+      .withUrl('http://localhost:5179/notificationHub', {
+        skipNegotiation: true,
+        transport: signalR.HttpTransportType.WebSockets,
+        accessTokenFactory: () => accessToken
+      })
+      .withAutomaticReconnect()
+      .build();
+  }
 
   useEffect(() => {
     async function runApp() {
@@ -40,8 +55,24 @@ function App() {
           return;
         }
       }
+      
       // If valid, begin fetching data
       await fetchDataAndSetUp();
+      
+      // Start signalR connection
+      try{
+        connection = await buildSignalRConection(result.accessToken);
+        await connection.start();
+      }catch(err){
+        console.error('SignalR Connection Error: ', err);
+      }
+
+      // Listen for messages from the server
+      connection.on('ReceiveNotification', (notifications) => {
+        setNotifications(prev => [...prev, notification]);
+        console.log('Notifications from server:', notifications);
+        // Handle the message (e.g., update state)
+      });
     }
     runApp();
   }, [])
@@ -69,6 +100,17 @@ function App() {
     await fetchUsers();
     await fetchProjectTasks();
     await fetchNotifications();
+  }
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await getNotificationsByUserId();
+      const data = response.data;
+      console.log("Retrieved notifications: ", data);
+      setNotifications(Array.isArray(data) ? data : (data.notifications || []));
+    } catch (error) {
+      setNotifications([]);
+    }
   }
 
   const fetchUsers = async () => {
@@ -107,17 +149,6 @@ function App() {
       console.error('Error fetching assigned project tasks:', error);
     }
   };
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await getAllNotifications();
-      const data = response.data;
-      console.log("Retrieved notifications: ", data);
-      setNotifications(Array.isArray(data) ? data : (data.notifications || []));
-    } catch (error) {
-      setNotifications([]);
-    }
-  }
 
   const handleLogin = async (formData) => {
     try {
@@ -214,12 +245,22 @@ function App() {
             </ProtectedRoute>
           }
         />
+        {/* <Route
+          path="/projects"
+          element={
+            <ProtectedRoute>
+              <ProjectDetails onLogout={handleLogout}
+              userInfo={userInfo}
+               />
+            </ProtectedRoute>
+          }
+        /> */}
         {/* Project Details */}
         <Route
           path="/projects/:projectId"
           element={
             <ProtectedRoute>
-              <ProjectDetails onLogout={handleLogout} projects={projects} projectTasks={projectTasks} onUpdateProject={handleUpdateProject} users={users} />
+              <ProjectDetails onLogout={handleLogout} projects={projects} projectTasks={projectTasks} onUpdateProject={handleUpdateProject} users={users} userInfo={userInfo}/>
             </ProtectedRoute>
           }
         />

@@ -1,7 +1,7 @@
 export const inboxMessages = [
     {
         id: 1,
-        type: 'task_assigned',
+        type: 'AssignedTask',
         title: 'New task assigned: Review API documentation',
         content: 'You have been assigned a new task to review the API documentation for the v3 release.',
         sender: 'Sarah Chen',
@@ -27,7 +27,7 @@ export const inboxMessages = [
     },
     {
         id: 3,
-        type: 'comment',
+        type: 'MentionedInComment',
         title: 'Comment on task: Draft project brief',
         content: 'Great work on the initial draft! Could you add more details about the technical requirements?',
         sender: 'Alex Rodriguez',
