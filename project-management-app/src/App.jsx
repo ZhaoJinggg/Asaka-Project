@@ -14,6 +14,8 @@ import * as ProjectAPI from './API/ProjectAPI';
 import { getAllUsers } from './API/UserAPI';
 import * as ProjectTaskAPI from './API/ProjectTaskAPI';
 import CreateProjectModal from './components/CreateProjectModal';
+import * as signalR from "@microsoft/signalr"
+import { getNotificationsByUserId } from './API/NotificationAPI';
 
 function App() {
   const navigate = useNavigate();
@@ -22,9 +24,23 @@ function App() {
   const [projectTasks, setProjectTasks] = useState([]);
   const [users, setUsers] = useState([]); // Store the logged in user's info like id, name, email, and role
   const [userInfo, setUserInfo] = useState({});
+  const [notifications, setNotifications] = useState({});
   const [loadingProjects, setLoadingProjects] = useState(true);
   // State to control the global Create Project modal
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  // Create signalR connection to listen to notification from server
+  let connection;
+  
+  const buildSignalRConection = async (accessToken) => {
+    return new signalR.HubConnectionBuilder()
+      .withUrl('http://localhost:5179/notificationHub', {
+        skipNegotiation: true,
+        transport: signalR.HttpTransportType.WebSockets,
+        accessTokenFactory: () => accessToken
+      })
+      .withAutomaticReconnect()
+      .build();
+  }
 
   useEffect(() => {
     async function runApp() {
@@ -42,8 +58,24 @@ function App() {
           return;
         }
       }
+      
       // If valid, begin fetching data
       await fetchDataAndSetUp();
+      
+      // Start signalR connection
+      try{
+        connection = await buildSignalRConection(result.accessToken);
+        await connection.start();
+      }catch(err){
+        console.error('SignalR Connection Error: ', err);
+      }
+
+      // Listen for messages from the server
+      connection.on('ReceiveNotification', (notifications) => {
+        setNotifications(prev => [...prev, notification]);
+        console.log('Notifications from server:', notifications);
+        // Handle the message (e.g., update state)
+      });
     }
     runApp();
   }, [])
@@ -70,6 +102,18 @@ function App() {
     await fetchProjects();
     await fetchUsers();
     await fetchProjectTasks();
+    await fetchNotifications();
+  }
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await getNotificationsByUserId();
+      const data = response.data;
+      console.log("Retrieved notifications: ", data);
+      setNotifications(Array.isArray(data) ? data : (data.notifications || []));
+    } catch (error) {
+      setNotifications([]);
+    }
   }
 
   const fetchUsers = async () => {
@@ -213,7 +257,7 @@ function App() {
           path="/inbox"
           element={
             <ProtectedRoute>
-              <Inbox onLogout={handleLogout} projects={projects} />
+              <Inbox onLogout={handleLogout} projects={projects} notifications={notifications} />
             </ProtectedRoute>
           }
         />

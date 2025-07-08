@@ -9,7 +9,7 @@ import { useTasks } from '../context/TaskContext';
 import OverviewIcon from '../assets/overview-svgrepo-com.svg';
 import BoardIcon from '../assets/board-svgrepo-com.svg';
 
-const ProjectDetails = ({ onLogout, projects = [], onUpdateProject }) => {
+const ProjectDetails = ({ onLogout, projects = [], onUpdateProject}) => {
     const { projectId } = useParams();
     const [activeTab, setActiveTab] = useState('board');
     const [showColorPicker, setShowColorPicker] = useState(false);

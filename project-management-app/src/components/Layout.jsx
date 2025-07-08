@@ -30,7 +30,7 @@ const Layout = ({ children, onLogout, projects = [], showSidebar: externalShowSi
                         className="fixed left-0 w-64 bg-white shadow-lg z-30 transition-transform duration-300 ease-in-out"
                         style={{ top: HEADER_HEIGHT, height: `calc(100vh - ${HEADER_HEIGHT}px)` }}
                     >
-                        <Sidebar onLogout={onLogout} projects={projects} />
+                        <Sidebar onLogout={onLogout} projects={projects} notifications={notifications} />
                     </div>
                 )}
                 {/* Main content with left padding for sidebar and top padding for header */}
