@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useTasks } from '../context/TaskContext';
-import { FiCalendar, FiUser } from 'react-icons/fi';
 import TaskDetailsModal from './TaskDetailsModal';
 import * as ProjectTaskAPI from '../API/ProjectTaskAPI';
 import { getAllUsers } from '../API/UserAPI';
@@ -26,8 +24,6 @@ const getPriorityStyles = (priority) => {
         case 'medium':
             return 'bg-yellow-100 text-yellow-800';
         case 'high':
-            return 'bg-orange-100 text-orange-800';
-        case 'urgent':
             return 'bg-red-100 text-red-800';
         default:
             return '';
@@ -35,7 +31,7 @@ const getPriorityStyles = (priority) => {
 };
 
 const ProjectBoard = ({ projectId, projects = [] }) => {
-    const { tasks: contextTasks, addTask: contextAddTask, updateTask: contextUpdateTask } = useTasks();
+    // Removed context; manage tasks locally
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [inlineAddStatus, setInlineAddStatus] = useState(null); // which column is adding
@@ -94,13 +90,13 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
             const newTask = response?.data || response;
             setTasks(prev => [...prev, newTask]);
             // Also update context for consistency
-            contextAddTask(newTask);
+            // contextAddTask(newTask); // Removed context
         } catch (error) {
             console.error('Error adding task:', error);
             // Fallback to local state only
             const fallbackTask = { ...taskData, id: Date.now().toString() };
             setTasks(prev => [...prev, fallbackTask]);
-            contextAddTask(fallbackTask);
+            // contextAddTask(fallbackTask); // Removed context
         }
     };
 
@@ -110,12 +106,12 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
             await ProjectTaskAPI.updateTask(id, updates);
             setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
             // Also update context for consistency
-            contextUpdateTask(id, updates);
+            // contextUpdateTask(id, updates); // Removed context
         } catch (error) {
             console.error('Error updating task:', error);
             // Fallback to local state only
             setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-            contextUpdateTask(id, updates);
+            // contextUpdateTask(id, updates); // Removed context
         }
     };
 

@@ -1,10 +1,8 @@
 import { createContext, useContext, useState } from 'react';
-import { initialTasks } from '../data/task';
 
 const TaskContext = createContext();
 
 export const TaskProvider = ({ children }) => {
-    const [tasks, setTasks] = useState(initialTasks);
 
     const addTask = (task) => {
         setTasks((prev) => [...prev, task]);

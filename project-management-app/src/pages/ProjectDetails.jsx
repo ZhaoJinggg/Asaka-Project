@@ -6,7 +6,7 @@ import Layout from '../components/Layout';
 import ProjectOverview from '../components/ProjectOverview';
 import ProjectBoard from '../components/ProjectBoard.jsx';
 import FilesView from '../components/FilesView';
-import { useTasks } from '../context/TaskContext';
+// TaskContext removed
 import OverviewIcon from '../assets/overview-svgrepo-com.svg';
 import BoardIcon from '../assets/board-svgrepo-com.svg';
 import FilesIcon from '../assets/folder-arrow-up-svgrepo-com.svg';
@@ -18,7 +18,7 @@ const ProjectDetails = ({ onLogout, projects = [], onUpdateProject, users = [], 
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const { tasks } = useTasks();
+    const tasks = projectTasks;
 
     // Find current project from list (convert id to number)
     const currentProject = projects.find(p => p.id === projectId);
@@ -37,7 +37,6 @@ const ProjectDetails = ({ onLogout, projects = [], onUpdateProject, users = [], 
     // Handlers for dropdown actions
     const handleEdit = () => {
         // Placeholder: open edit modal or call onUpdateProject
-        alert('Edit project details (implement modal as needed)');
         setShowDropdown(false);
     };
     const handleArchive = async () => {
