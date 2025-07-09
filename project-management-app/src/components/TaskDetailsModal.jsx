@@ -28,6 +28,7 @@ const priorityColors = {
 function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
   const [editTask, setEditTask] = useState({
     ...task,
+    newAssignees: task.newAssignees || [],
     attachments: task.attachments || [],
   });
   const [loading, setLoading] = useState(false);
@@ -202,6 +203,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
         }
       } catch (error) {
         // Optionally handle error
+        console.log("Error in fetching task and comment: ", error);
       } finally {
         setLoading(false);
         setLoadingTasks(false);
@@ -237,12 +239,21 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
 
   const handleSave = async () => {
     // Assign user if changed
-    if (editTask.assignees && editTask.assignee.id !== task.assignee?.id) {
-      try {
-        await ProjectTaskAPI.assignTaskToUser(task.id, editTask.assignee.id);
-      } catch (err) {
-        console.error("Failed to assign task", err);
+    if (editTask.newAssignees) {
+      for (let i = 0; i < editTask.newAssignees.length; i++) {
+        try {
+          await ProjectTaskAPI.assignTaskToUser(
+            editTask.id,
+            editTask.newAssignees[i].id
+          );
+        } catch (err) {
+          console.error("Failed to assign task", err);
+        }
       }
+      setEditTask((prev) => ({
+        ...prev,
+        newAssignees: [],
+      }));
     }
 
     // Persist other task field changes
@@ -253,6 +264,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
         priority: editTask.priority,
         status: editTask.status,
         endDate: editTask.endDate,
+        startDate: editTask.startDate,
       };
       await ProjectTaskAPI.updateTask(task.id, payload);
     } catch (err) {
@@ -501,9 +513,19 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                             let newAssignee = await getUserById(person.id);
                             setEditTask((t) => ({
                               ...t,
-                              assignees: [...t.assignees, newAssignee],
+                              newAssignees: [
+                                ...(t.newAssignees || []),
+                                newAssignee.data,
+                              ],
+                              assignees: [
+                                ...(t.assignees || []),
+                                newAssignee.data,
+                              ],
                             }));
-                            
+                            setPeople((prev) =>
+                              prev.filter((p) => p.id !== newAssignee.data.id)
+                            );
+
                             setAssigneeQuery("");
                             setShowAssigneeDropdown(false);
                           }}

@@ -1,4 +1,9 @@
-import { requestWrapper, getUserId, isTokenValid, refreshTokens } from "./AuthAPI";
+import {
+  requestWrapper,
+  getUserId,
+  isTokenValid,
+  refreshTokens,
+} from "./AuthAPI";
 import axios from "axios";
 
 const TASK_API_URL = "http://localhost:5179/api/ProjectTask";
@@ -7,7 +12,7 @@ const TASK_API_URL = "http://localhost:5179/api/ProjectTask";
 export const getAllTasks = async () => {
   const response = await requestWrapper(TASK_API_URL, "GET");
   const data = response?.data || response;
-  console.log('Fetched tasks:', data);
+  console.log("Fetched tasks:", data);
   return Array.isArray(data) ? data : [];
 };
 
@@ -15,7 +20,10 @@ export const getAllTasks = async () => {
 export const getAllTasksByUserId = async () => {
   const userId = await getUserId();
   if (!userId) return;
-  return await requestWrapper(`${TASK_API_URL}/assigned-tasks/${userId}`, "GET");
+  return await requestWrapper(
+    `${TASK_API_URL}/assigned-tasks/${userId}`,
+    "GET"
+  );
 };
 
 // Get all tasks owned by the current user
@@ -34,7 +42,11 @@ export const getTaskById = async (taskId) => {
 export const addTask = async (projectId, data) => {
   const userId = await getUserId();
   if (!userId) return;
-  return await requestWrapper(`${TASK_API_URL}/${projectId}/${userId}`, "POST", { ...data });
+  return await requestWrapper(
+    `${TASK_API_URL}/${projectId}/${userId}`,
+    "POST",
+    { ...data }
+  );
 };
 
 export const updateTask = async (taskId, data) => {
@@ -52,9 +64,10 @@ export const updateTaskStatus = async (taskId, status) => {
 };
 
 export const assignTaskToUser = async (taskId, userId) => {
-  return await requestWrapper(`${TASK_API_URL}/${taskId}/assign`, "PUT", {
-    assigneeId: userId,
-  });
+  return await requestWrapper(
+    `${TASK_API_URL}/assign-user/${taskId}/${userId}`,
+    "POST"
+  );
 };
 
 export const getTasksByStatus = async (status) => {
@@ -66,11 +79,17 @@ export const getTasksByPriority = async (priority) => {
 };
 
 export const searchTasks = async (searchTerm) => {
-  return await requestWrapper(`${TASK_API_URL}/search?q=${encodeURIComponent(searchTerm)}`, "GET");
+  return await requestWrapper(
+    `${TASK_API_URL}/search?q=${encodeURIComponent(searchTerm)}`,
+    "GET"
+  );
 };
 
 export const getTasksByDateRange = async (startDate, endDate) => {
-  return await requestWrapper(`${TASK_API_URL}/date-range?startDate=${startDate}&endDate=${endDate}`, "GET");
+  return await requestWrapper(
+    `${TASK_API_URL}/date-range?startDate=${startDate}&endDate=${endDate}`,
+    "GET"
+  );
 };
 
 export const bulkUpdateTasks = async (taskIds, updates) => {
@@ -95,15 +114,19 @@ export const getTaskComments = async (taskId) => {
 };
 
 export const addSubtask = async (taskId, userId, subtask) => {
-  return await requestWrapper(`${TASK_API_URL}/${taskId}/${userId}/subtask`, "POST", {...subtask});
+  return await requestWrapper(
+    `${TASK_API_URL}/${taskId}/${userId}/subtask`,
+    "POST",
+    { ...subtask }
+  );
 };
 // export const addTaskAttachment = async (taskId, file) => {
 //   const formData = new FormData();
 //   formData.append('file', file);
-  
+
 //   // Get authentication tokens
 //   var { isValid, accessToken, refreshToken, userId } = isTokenValid();
-  
+
 //   // Refresh tokens when access token is expired
 //   if (!isValid) {
 //     try {
@@ -112,10 +135,10 @@ export const addSubtask = async (taskId, userId, subtask) => {
 //       throw e;
 //     }
 //   }
-  
+
 //   // Make the request with FormData
 //   return await axios.post(`${TASK_API_URL}/${taskId}/attachments`, formData, {
-//     headers: { 
+//     headers: {
 //       Authorization: `Bearer ${accessToken}`,
 //       'Content-Type': 'multipart/form-data'
 //     },
@@ -128,4 +151,4 @@ export const addSubtask = async (taskId, userId, subtask) => {
 
 // export const removeTaskAttachment = async (taskId, attachmentId) => {
 //   return await requestWrapper(`${TASK_API_URL}/${taskId}/attachments/${attachmentId}`, "DELETE");
-// }; 
+// };
