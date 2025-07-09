@@ -101,6 +101,7 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
     };
 
     // Update task in API and local state
+    // id = projecTask's id; updates = new projectTask's details
     const updateTask = async (id, updates) => {
         try {
             await ProjectTaskAPI.updateTask(id, updates);

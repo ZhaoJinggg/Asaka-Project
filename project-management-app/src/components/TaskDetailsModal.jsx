@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { people } from '../data/people';
 import { FiPaperclip, FiX, FiDownload, FiFile } from 'react-icons/fi';
 import * as ProjectTaskAPI from '../API/ProjectTaskAPI';
 import * as CommentAPI from '../API/CommentAPI';
 import { getUserId } from '../API/AuthAPI';
 import { getAllUsers } from '../API/UserAPI';
 import { getAttachmentsByProjectTaskId, uploadAttachment, downloadAttachment } from '../API/AttachmentAPI';
+import * as ProjectAPI from '../API/ProjectAPI'
 
 const statusColors = {
   completed: 'bg-green-700 text-white',
@@ -48,9 +48,10 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [subtasks, setSubtasks] = useState([]);
   const [currentUserRole, setCurrentUserRole] = useState(undefined);
+  const [people, setPeople] = useState([]);
 
   // Debug logs
-        console.log('TaskDetailsModal taskComments state:', taskComments);
+  console.log('TaskDetailsModal taskComments state:', taskComments);
 
   useEffect(() => {
     // Trap focus
@@ -97,6 +98,52 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
           setTaskComments(Array.isArray(dataComment) ? dataComment : (dataComment.comments || []));
           setAllTasks(Array.isArray(dataAllTasks) ? dataAllTasks : []);
           setSubtasks(dataAllTasks.filter(t => t.nestedLevel === 1 && t.parentId === task.id));
+
+        const projId = data.projectId || task.projectId || data.project?.id;
+        if (projId) {
+          try {
+            const projResp = await ProjectAPI.getProjectById(projId);
+            const projData = projResp?.data || projResp;
+            const collected = [];
+
+            const getInitials = (name) => (name || '').split(' ').map(n => n[0]).join('').toUpperCase();
+            const colorClasses = ['bg-cyan-500', 'bg-purple-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-blue-500', 'bg-pink-500', 'bg-orange-500'];
+
+            const ownerApi = projData?.owner || projData?.projectOwner;
+            if (ownerApi) {
+              collected.push({
+                id: ownerApi.id ?? 'owner',
+                name: ownerApi.username || ownerApi.name || (ownerApi.email ? ownerApi.email.split('@')[0] : 'Owner'),
+                email: ownerApi.email || '',
+                initials: getInitials(ownerApi.username || ownerApi.name || ownerApi.email),
+                role: 'Owner',
+                color: colorClasses[0],
+              });
+            }
+
+            const membersApi =
+              (Array.isArray(projData?.members) && projData.members) ||
+              (Array.isArray(projData?.assignees) && projData.assignees) ||
+              (Array.isArray(projData?.assignedUsers) && projData.assignedUsers) ||
+              [];
+
+            membersApi.forEach((u, idx) => {
+              if (collected.some((m) => (u.id && m.id === u.id) || (u.email && m.email === u.email))) return;
+              collected.push({
+                id: u.id ?? `member-${idx}`,
+                name: u.username || u.name || (u.email ? u.email.split('@')[0] : 'User'),
+                email: u.email || '',
+                initials: getInitials(u.username || u.name || u.email),
+                role: u.role || 'Member',
+                color: colorClasses[(idx + 1) % colorClasses.length],
+              });
+            });
+
+            setPeople(collected);
+          } catch (err) {
+            console.error('Failed to fetch project members', err);
+          }
+        }
 
       } catch (error) {
         // Optionally handle error
