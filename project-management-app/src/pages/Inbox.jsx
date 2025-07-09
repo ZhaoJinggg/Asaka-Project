@@ -1,14 +1,24 @@
 import { useState, useMemo } from 'react';
 import Layout from '../components/Layout';
-// import { inboxMessages } from '../data/inbox';
+import * as Utils from "../Utils/Utils";
+import { deleteNotificationById, markRead } from '../API/NotificationAPI';
 
-const Inbox = ({ onLogout, projects, notifications }) => {
+const Inbox = ({ onLogout, projects = [], notifications = [] }) => {
     const [messages, setMessages] = useState(notifications);
     const [selectedFilter, setSelectedFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedMessage, setSelectedMessage] = useState(null);
 
-    console.log('notifications:', notifications);
+    const getTitle = (type) => {
+      switch(type){
+        case "AssignedTask":
+          return "New Task";
+        case "MentionedInComment":
+          return "Mentioned In Comment";
+        default:
+          return "New Notification";
+      }
+    }
 
     // Filter messages based on selected filter and search query
     const filteredMessages = useMemo(() => {
@@ -18,8 +28,6 @@ const Inbox = ({ onLogout, projects, notifications }) => {
         if (selectedFilter !== 'all') {
             filtered = filtered.filter(message => {
                 if (selectedFilter === 'unread') return !message.isRead;
-                if (selectedFilter === 'action_required') return message.actionRequired;
-                if (selectedFilter === 'high_priority') return message.priority === 'high';
                 return message.type === selectedFilter;
             });
         }
@@ -28,10 +36,8 @@ const Inbox = ({ onLogout, projects, notifications }) => {
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(message =>
-                message.title.toLowerCase().includes(query) ||
-                message.content.toLowerCase().includes(query) ||
-                message.sender.toLowerCase().includes(query) ||
-                message.project.toLowerCase().includes(query)
+                message.type.toLowerCase().includes(query) ||
+                message.message.toLowerCase().includes(query)
             );
         }
 
@@ -42,23 +48,31 @@ const Inbox = ({ onLogout, projects, notifications }) => {
     const unreadCount = messages.filter(m => !m.isRead).length;
 
     // Mark message as read
-    const markAsRead = (messageId) => {
+    const markAsRead = async (messageId) => {
         setMessages(prev => prev.map(msg =>
             msg.id === messageId ? { ...msg, isRead: true } : msg
         ));
+        
+        // Update in the database
+        await markRead(messageId);
     };
 
     // Mark all as read
-    const markAllAsRead = () => {
+    const markAllAsRead = async () => {
         setMessages(prev => prev.map(msg => ({ ...msg, isRead: true })));
+
+        // Update in the database
+        messages.forEach(async (message) => { await markRead(message.id)});
     };
 
     // Delete message
-    const deleteMessage = (messageId) => {
+    const deleteMessage = async (messageId) => {
         setMessages(prev => prev.filter(msg => msg.id !== messageId));
         if (selectedMessage?.id === messageId) {
             setSelectedMessage(null);
         }
+        // Delete from database
+        await deleteNotificationById(messageId);
     };
 
     // Format timestamp
@@ -176,37 +190,22 @@ const Inbox = ({ onLogout, projects, notifications }) => {
                                                     } ${!message.isRead ? 'bg-blue-50' : ''}`}
                                             >
                                                 <div className="flex items-start gap-4">
-                                                    {/* Avatar */}
-                                                    <div className="flex-shrink-0">
-                                                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium text-gray-700">
-                                                            {message.senderAvatar}
-                                                        </div>
-                                                    </div>
-
                                                     {/* Content */}
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-start justify-between gap-4">
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-2 mb-1">
-                                                                    <span className="text-sm font-medium text-gray-900">
-                                                                        {message.sender}
-                                                                    </span>
                                                                     <span className="text-sm text-gray-500">
-                                                                        {formatTimestamp(message.timestamp)}
+                                                                        {formatTimestamp(message.createdAt)}
                                                                     </span>
                                                                 </div>
                                                                 <h3 className={`text-base font-medium mb-1 ${!message.isRead ? 'text-gray-900' : 'text-gray-700'
                                                                     }`}>
-                                                                    {message.title}
+                                                                    {getTitle(message.type)}
                                                                 </h3>
                                                                 <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                                                                    {message.content}
+                                                                    {message.message}
                                                                 </p>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xs text-gray-500">
-                                                                        {message.project}
-                                                                    </span>
-                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -251,24 +250,20 @@ const Inbox = ({ onLogout, projects, notifications }) => {
                                 </div>
                                 <div className="p-6">
                                     <div className="flex items-center gap-4 mb-6">
-                                        <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-lg font-medium text-gray-700">
-                                            {selectedMessage.senderAvatar}
-                                        </div>
                                         <div>
-                                            <h4 className="text-lg font-semibold text-gray-900">{selectedMessage.sender}</h4>
-                                            <p className="text-sm text-gray-500">{formatTimestamp(selectedMessage.timestamp)}</p>
+                                            <h4 className="text-lg font-semibold text-gray-900">{getTitle(selectedMessage.type)}</h4>
                                         </div>
                                     </div>
 
                                     <div className="space-y-4">
                                         <div>
                                             <h5 className="text-lg font-medium text-gray-900 mb-2">{selectedMessage.title}</h5>
-                                            <p className="text-gray-700 leading-relaxed">{selectedMessage.content}</p>
+                                            <p className="text-gray-700 leading-relaxed">{selectedMessage.message}</p>
                                         </div>
 
                                         <div className="flex flex-wrap gap-2">
                                             <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
-                                                {selectedMessage.project}
+                                                <p className="text-sm text-gray-500">{formatTimestamp(selectedMessage.createdAt)}</p>
                                             </span>
                                         </div>
 
