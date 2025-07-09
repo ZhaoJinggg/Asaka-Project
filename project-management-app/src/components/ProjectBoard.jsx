@@ -30,7 +30,7 @@ const getPriorityStyles = (priority) => {
     }
 };
 
-const ProjectBoard = ({ projectId, projects = [] }) => {
+const ProjectBoard = ({ projectId, projects = [], onAttachmentsChange }) => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [inlineAddStatus, setInlineAddStatus] = useState(null); // which column is adding
@@ -282,6 +282,7 @@ const ProjectBoard = ({ projectId, projects = [] }) => {
                     onClose={() => setSelectedTask(null)}
                     onSave={updated => updateTask(selectedTask.id, updated)}
                     projects={projects}
+                    onAttachmentsChange={onAttachmentsChange}
                 />
             )}
         </>

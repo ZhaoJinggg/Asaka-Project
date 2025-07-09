@@ -8,6 +8,7 @@ import {
   getAttachmentsByProjectTaskId,
   uploadAttachment,
   downloadAttachment,
+  deleteAttachment,
 } from "../API/AttachmentAPI";
 import * as ProjectAPI from "../API/ProjectAPI";
 import { projectColors } from "../data/colors";
@@ -26,7 +27,7 @@ const priorityColors = {
   urgent: "bg-red-500 text-white",
 };
 
-function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
+function TaskDetailsModal({ task, onClose, onSave, projects, userInfo, onAttachmentsChange }) {
   const [editTask, setEditTask] = useState({
     ...task,
     newAssignees: task.newAssignees || [],
@@ -349,6 +350,11 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
         ...prev,
         attachments: attachments,
       }));
+
+      // Notify parent components about attachment change
+      if (typeof onAttachmentsChange === 'function') {
+        onAttachmentsChange();
+      }
     } catch (err) {
       alert(`Failed to upload ${file.name}`);
       console.error(err);
@@ -403,6 +409,11 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
         ...prev,
         attachments: attachments,
       }));
+
+      // Notify parent components about attachment change
+      if (typeof onAttachmentsChange === 'function') {
+        onAttachmentsChange();
+      }
     } catch (err) {
       alert("Failed to delete attachment.");
       console.error(err);
@@ -785,28 +796,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
             {/* Subtasks */}
             <div className="mb-6">
               <div className="text-sm text-gray-500 mb-2">Subtasks</div>
-              <div className="divide-y divide-gray-200">
-                {loadingTasks ? (
-                  <div className="text-gray-400 py-2">Loading subtasks...</div>
-                ) : (
-                  subtasks.map((subtask) => (
-                    <div
-                      key={subtask.id}
-                      className="flex items-center gap-2 py-2"
-                    >
-                      <span
-                        className={`flex-1 ${subtask.status === "completed"
-                          ? "line-through text-gray-400"
-                          : "text-black"
-                          }`}
-                      >
-                        {subtask.title}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-              {/* Add Subtask Button and Form BELOW the list (if you want to keep it) */}
+              {/* Add Subtask Button and Form ABOVE the list */}
               {!showSubtaskForm && (
                 <button
                   className="mt-2 px-3 py-2 border border-gray-400 rounded text-sm text-black hover:bg-gray-100 flex items-center gap-2"
@@ -926,6 +916,28 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                   </div>
                 </div>
               )}
+              {/* Subtask list BELOW the add link/form */}
+              <div className="divide-y divide-gray-200 mt-2">
+                {loadingTasks ? (
+                  <div className="text-gray-400 py-2">Loading subtasks...</div>
+                ) : (
+                  subtasks.map((subtask) => (
+                    <div
+                      key={subtask.id}
+                      className="flex items-center gap-2 py-2"
+                    >
+                      <span
+                        className={`flex-1 ${subtask.status === "completed"
+                          ? "line-through text-gray-400"
+                          : "text-black"
+                          }`}
+                      >
+                        {subtask.title}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
             {/* --- COMMENT SECTION --- */}
             <div className="mt-6">
@@ -1003,6 +1015,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
           }}
           projects={projects}
           onAddComment={onAddComment}
+          onAttachmentsChange={onAttachmentsChange}
         />
       )}
     </>

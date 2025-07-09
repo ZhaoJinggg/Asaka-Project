@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { projectColors } from '../data/colors';
 import { deleteProject, updateProject } from '../API/ProjectAPI';
+import * as ProjectTaskAPI from '../API/ProjectTaskAPI';
+import { getAttachmentsByProjectTaskId, downloadAttachment } from '../API/AttachmentAPI';
 import Layout from '../components/Layout';
 import ProjectOverview from '../components/ProjectOverview';
 import ProjectBoard from '../components/ProjectBoard.jsx';
@@ -18,17 +20,68 @@ const ProjectDetails = ({ onLogout, projects = [], projectTasks = [], onUpdatePr
     const [showDropdown, setShowDropdown] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const tasks = projectTasks;
+    const [projectFiles, setProjectFiles] = useState([]);
+
+    const fetchProjectFiles = async () => {
+        if (!projectId) return;
+        try {
+            // Fetch all tasks for this project (ensuring latest data)
+            const resp = await ProjectTaskAPI.getAllTasks();
+            const allTasks = resp?.data || resp;
+            const tasksInProject = allTasks.filter(t => String(t.projectId) === String(projectId));
+
+            const filePromises = tasksInProject.map(async (task) => {
+                try {
+                    const attachmentResp = await getAttachmentsByProjectTaskId(task.id);
+                    const attachments = attachmentResp?.data || attachmentResp || [];
+                    return attachments.map(att => ({
+                        ...att,
+                        // Normalize common fields so FilesView can display properly
+                        name: att.name || att.attachmentName || 'Unnamed',
+                        type: att.type || att.contentType || '',
+                        size: att.size || att.fileSize || 0,
+                        taskTitle: task.title,
+                        taskId: task.id,
+                    }));
+                } catch (err) {
+                    console.error('Failed to fetch attachments for task', task.id, err);
+                    return [];
+                }
+            });
+
+            const filesNested = await Promise.all(filePromises);
+            const filesFlat = filesNested.flat();
+            setProjectFiles(filesFlat);
+        } catch (err) {
+            console.error('Failed to fetch project files', err);
+            setProjectFiles([]);
+        }
+    };
+
+    // Fetch files when component mounts or projectId changes
+    useEffect(() => {
+        fetchProjectFiles();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [projectId]);
+
+    // Also refresh when user switches to files tab
+    useEffect(() => {
+        if (activeTab === 'files') {
+            fetchProjectFiles();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
 
     // Find current project from list (convert id to number)
     const currentProject = projects.find(p => p.id === projectId);
 
     // Get all files from tasks in this project
-    const projectFiles = tasks.reduce((files, task) => {
-        if ((task.projectId === projectId || task.projectId === Number(projectId)) && task.attachments && task.attachments.length > 0) {
-            return [...files, ...task.attachments.map(file => ({ ...file, taskTitle: task.title, taskId: task.id }))];
-        }
-        return files;
-    }, []);
+    // const projectFiles = tasks.reduce((files, task) => {
+    //     if ((task.projectId === projectId || task.projectId === Number(projectId)) && task.attachments && task.attachments.length > 0) {
+    //         return [...files, ...task.attachments.map(file => ({ ...file, taskTitle: task.title, taskId: task.id }))];
+    //     }
+    //     return files;
+    // }, []);
 
     // Determine color styling
     const isHexColor = currentProject?.color?.startsWith('#');
@@ -78,10 +131,20 @@ const ProjectDetails = ({ onLogout, projects = [], projectTasks = [], onUpdatePr
         }
     };
 
-    const handleFileClick = (file) => {
-        // In a real app, this would open the file or download it
-        if (file.url) {
-            window.open(file.url, '_blank');
+    const handleFileClick = async (file) => {
+        try {
+            const blob = await downloadAttachment(file.id);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = file.name || file.attachmentName || 'attachment';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Failed to download attachment', err);
+            alert('Failed to download attachment.');
         }
     };
 
@@ -223,7 +286,13 @@ const ProjectDetails = ({ onLogout, projects = [], projectTasks = [], onUpdatePr
             {activeTab === 'overview' && currentProject && (
                 <ProjectOverview project={currentProject} onUpdateProject={onUpdateProject} users={users} userInfo={userInfo} />
             )}
-            {activeTab === 'board' && <ProjectBoard projectId={projectId} userInfo={userInfo} />}
+            {activeTab === 'board' && (
+                <ProjectBoard
+                    projectId={projectId}
+                    userInfo={userInfo}
+                    onAttachmentsChange={fetchProjectFiles}
+                />
+            )}
             {activeTab === 'files' && (
                 <FilesView
                     files={projectFiles}

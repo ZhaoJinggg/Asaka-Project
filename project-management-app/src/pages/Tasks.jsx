@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 import FilesView from '../components/FilesView';
 import * as ProjectTaskAPI from '../API/ProjectTaskAPI';
+import { downloadAttachment } from '../API/AttachmentAPI';
 import { isTokenValid } from '../API/AuthAPI';
 
 const columns = [
@@ -96,13 +97,6 @@ const Tasks = ({ onLogout, projects = [], projectTasks = [], userInfo = {} }) =>
     return '';
   };
 
-  const handleFileClick = (file) => {
-    // In a real app, this would open the file or download it
-    if (file.url) {
-      window.open(file.url, '_blank');
-    }
-  };
-
   const renderBoardView = () => (
     <div className="flex gap-4 w-full overflow-x-auto pb-8 min-h-[70vh]">
       {columns.map(col => (
@@ -176,18 +170,6 @@ const Tasks = ({ onLogout, projects = [], projectTasks = [], userInfo = {} }) =>
           >
             Board
           </button>
-          {/* <button
-            className={`px-2 pb-1 font-medium ${activeTab === 'dashboard' ? 'text-black/80 border-b-2 border-blue-500' : 'text-black/40 hover:text-black/20'}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            Dashboard
-          </button> */}
-          <button
-            className={`px-2 pb-1 font-medium ${activeTab === 'files' ? 'text-black/80 border-b-2 border-blue-500' : 'text-black/40 hover:text-black/20'}`}
-            onClick={() => setActiveTab('files')}
-          >
-            Files
-          </button>
         </div>
         <div className="flex-1" />
       </div>
@@ -199,12 +181,6 @@ const Tasks = ({ onLogout, projects = [], projectTasks = [], userInfo = {} }) =>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Dashboard</h2>
           <p className="text-gray-500">Dashboard view coming soon...</p>
         </div>
-      )}
-      {activeTab === 'files' && (
-        <FilesView
-          files={allFiles}
-          onFileClick={handleFileClick}
-        />
       )}
 
       {selectedTask && (
