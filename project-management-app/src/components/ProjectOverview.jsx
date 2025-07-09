@@ -142,9 +142,9 @@ const ProjectOverview = ({ project, onUpdateProject, users = [], userInfo }) => 
     }, [project]);
 
     useEffect(() => {
-      if (userInfo?.role === 'contributor' && detailsEditMode) {
-        setDetailsEditMode(false);
-      }
+        if (userInfo?.role === 'contributor' && detailsEditMode) {
+            setDetailsEditMode(false);
+        }
     }, [userInfo?.role, detailsEditMode]);
 
     const handleSaveGoal = async () => {
@@ -365,11 +365,11 @@ const ProjectOverview = ({ project, onUpdateProject, users = [], userInfo }) => 
                         {detailsEditMode ? (
                             <div className="flex gap-2">
                                 <button
-                                  onClick={handleSaveDetails}
-                                  disabled={currentUserRole === 'contributor'}
-                                  className={`px-3 py-1 rounded-lg text-sm font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600'}`}
+                                    onClick={handleSaveDetails}
+                                    disabled={currentUserRole === 'contributor'}
+                                    className={`px-3 py-1 rounded-lg text-sm font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600'}`}
                                 >
-                                  Save
+                                    Save
                                 </button>
                                 <button
                                     onClick={() => {
@@ -388,11 +388,11 @@ const ProjectOverview = ({ project, onUpdateProject, users = [], userInfo }) => 
                             </div>
                         ) : (
                             <button
-                              onClick={() => setDetailsEditMode(true)}
-                              disabled={currentUserRole === 'contributor'}
-                              className={`px-3 py-1 rounded-lg text-sm font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                onClick={() => setDetailsEditMode(true)}
+                                disabled={currentUserRole === 'contributor'}
+                                className={`px-3 py-1 rounded-lg text-sm font-semibold ${currentUserRole === 'contributor' ? 'bg-gray-300 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                             >
-                              Edit
+                                Edit
                             </button>
                         )}
                     </div>

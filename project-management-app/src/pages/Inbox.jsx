@@ -10,14 +10,14 @@ const Inbox = ({ onLogout, projects = [], notifications = [] }) => {
     const [selectedMessage, setSelectedMessage] = useState(null);
 
     const getTitle = (type) => {
-      switch(type){
-        case "AssignedTask":
-          return "New Task";
-        case "MentionedInComment":
-          return "Mentioned In Comment";
-        default:
-          return "New Notification";
-      }
+        switch (type) {
+            case "AssignedTask":
+                return "New Task";
+            case "MentionedInComment":
+                return "Mentioned In Comment";
+            default:
+                return "New Notification";
+        }
     }
 
     // Filter messages based on selected filter and search query
@@ -52,7 +52,7 @@ const Inbox = ({ onLogout, projects = [], notifications = [] }) => {
         setMessages(prev => prev.map(msg =>
             msg.id === messageId ? { ...msg, isRead: true } : msg
         ));
-        
+
         // Update in the database
         await markRead(messageId);
     };
@@ -62,7 +62,7 @@ const Inbox = ({ onLogout, projects = [], notifications = [] }) => {
         setMessages(prev => prev.map(msg => ({ ...msg, isRead: true })));
 
         // Update in the database
-        messages.forEach(async (message) => { await markRead(message.id)});
+        messages.forEach(async (message) => { await markRead(message.id) });
     };
 
     // Delete message

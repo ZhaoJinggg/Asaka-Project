@@ -11,6 +11,7 @@ import {
 } from "../API/AttachmentAPI";
 import * as ProjectAPI from "../API/ProjectAPI";
 import { projectColors } from "../data/colors";
+import { removeUserFromTask } from "../API/ProjectTaskAPI";
 
 const statusColors = {
   completed: "bg-green-700 text-white",
@@ -28,6 +29,7 @@ const priorityColors = {
 function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
   const [editTask, setEditTask] = useState({
     ...task,
+    newAssignees: task.newAssignees || [],
     newAssignees: task.newAssignees || [],
     attachments: task.attachments || [],
   });
@@ -204,6 +206,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
       } catch (error) {
         // Optionally handle error
         console.log("Error in fetching task and comment: ", error);
+        console.log("Error in fetching task and comment: ", error);
       } finally {
         setLoading(false);
         setLoadingTasks(false);
@@ -231,10 +234,10 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
   // Filter people by query
   const filteredPeople = assigneeQuery
     ? people.filter(
-        (p) =>
-          p.name.toLowerCase().includes(assigneeQuery.toLowerCase()) ||
-          p.email.toLowerCase().includes(assigneeQuery.toLowerCase())
-      )
+      (p) =>
+        p.name.toLowerCase().includes(assigneeQuery.toLowerCase()) ||
+        p.email.toLowerCase().includes(assigneeQuery.toLowerCase())
+    )
     : people;
 
   const handleSave = async () => {
@@ -264,6 +267,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
         priority: editTask.priority,
         status: editTask.status,
         endDate: editTask.endDate,
+        startDate: editTask.startDate,
         startDate: editTask.startDate,
       };
       await ProjectTaskAPI.updateTask(task.id, payload);
@@ -354,6 +358,41 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
     event.target.value = "";
   };
 
+  // NEW: remove existing assignee from task both in backend and local state
+  const handleRemoveAssignee = async (assignee) => {
+    if (!assignee?.id) return;
+    try {
+      // Call API to remove user from task
+      await removeUserFromTask(editTask.id, assignee.id);
+      // Update local task state to reflect removal
+      setEditTask((prev) => ({
+        ...prev,
+        assignees: (prev.assignees || []).filter((a) => a.id !== assignee.id),
+      }));
+      // Optionally add removed person back to selectable people list
+      setPeople((prev) => {
+        // Avoid duplicates
+        if (prev.some((p) => p.id === assignee.id)) return prev;
+        const newPerson = {
+          id: assignee.id,
+          name:
+            assignee.username ||
+            assignee.name ||
+            (assignee.email ? assignee.email.split("@")[0] : "User"),
+          email: assignee.email || "",
+          initials: getInitials(
+            assignee.username || assignee.name || assignee.email
+          ),
+          role: assignee.role || "Member",
+          color: projectColors[prev.length % projectColors.length],
+        };
+        return [...prev, newPerson];
+      });
+    } catch (err) {
+      console.error("Failed to remove user from task", err);
+    }
+  };
+
   const handleRemoveAttachment = async (attachmentId) => {
     try {
       await deleteAttachment(attachmentId);
@@ -400,7 +439,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
   };
 
   const getFileIcon = (fileType) => {
-    if (fileType.startsWith("image/")) return "🖼️";
+    if (fileType.startsWith("image/")) return "🖼";
     if (fileType.startsWith("video/")) return "🎥";
     if (fileType.startsWith("audio/")) return "🎵";
     if (fileType.includes("pdf")) return "📄";
@@ -469,12 +508,12 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                 {editTask.completed
                   ? "Completed"
                   : editTask.status === "in_progress"
-                  ? "In progress"
-                  : editTask.status === "todo"
-                  ? "To do"
-                  : editTask.status === "completed"
-                  ? "Completed"
-                  : editTask.status || "To do"}
+                    ? "In progress"
+                    : editTask.status === "todo"
+                      ? "To do"
+                      : editTask.status === "completed"
+                        ? "Completed"
+                        : editTask.status || "To do"}
               </span>
             </div>
             {/* Title */}
@@ -521,7 +560,19 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                                 ...(t.assignees || []),
                                 newAssignee.data,
                               ],
+                              newAssignees: [
+                                ...(t.newAssignees || []),
+                                newAssignee.data,
+                              ],
+                              assignees: [
+                                ...(t.assignees || []),
+                                newAssignee.data,
+                              ],
                             }));
+                            setPeople((prev) =>
+                              prev.filter((p) => p.id !== newAssignee.data.id)
+                            );
+
                             setPeople((prev) =>
                               prev.filter((p) => p.id !== newAssignee.data.id)
                             );
@@ -566,9 +617,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                       </div>
                       <button
                         className="ml-2 text-gray-400 hover:text-red-500 text-lg font-bold"
-                        onClick={() =>
-                          setEditTask((t) => ({ ...t, assignee: null }))
-                        }
+                        onClick={() => handleRemoveAssignee(assignee)}
                         aria-label="Remove assignee"
                         disabled={currentUserRole === "contributor"}
                       >
@@ -616,13 +665,12 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                   <div className="flex items-center px-4 py-2">
                     <span className="mr-2">Priority</span>
                     <select
-                      className={`rounded px-2 py-1 text-xs font-semibold ml-auto ${
-                        priorityColors[
-                          editTask.priority?.value ||
-                            editTask.priority ||
-                            "medium"
-                        ]
-                      }`}
+                      className={`rounded px-2 py-1 text-xs font-semibold ml-auto ${priorityColors[
+                        editTask.priority?.value ||
+                        editTask.priority ||
+                        "medium"
+                      ]
+                        }`}
                       value={
                         editTask.priority?.value ||
                         editTask.priority ||
@@ -642,9 +690,8 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                   <div className="flex items-center px-4 py-2">
                     <span className="mr-2">Status</span>
                     <select
-                      className={`rounded px-2 py-1 text-xs font-semibold ml-auto ${
-                        statusColors[editTask.status || "todo"]
-                      }`}
+                      className={`rounded px-2 py-1 text-xs font-semibold ml-auto ${statusColors[editTask.status || "todo"]
+                        }`}
                       value={editTask.status}
                       onChange={(e) =>
                         setEditTask((t) => ({ ...t, status: e.target.value }))
@@ -722,7 +769,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                   multiple={false}
                   onChange={handleFileSelect}
                   className="hidden"
-                  accept="*/*"
+                  accept="/"
                   disabled={currentUserRole === "contributor"}
                 />
                 <button
@@ -748,11 +795,10 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                       className="flex items-center gap-2 py-2"
                     >
                       <span
-                        className={`flex-1 ${
-                          subtask.status === "completed"
-                            ? "line-through text-gray-400"
-                            : "text-black"
-                        }`}
+                        className={`flex-1 ${subtask.status === "completed"
+                          ? "line-through text-gray-400"
+                          : "text-black"
+                          }`}
                       >
                         {subtask.title}
                       </span>
@@ -912,7 +958,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
                 <button
                   onClick={handleAddComment}
                   className="bg-cyan-600 text-white px-3 py-1 rounded"
-                  // disabled={addingComment || !newComment.trim()}
+                // disabled={addingComment || !newComment.trim()}
                 >
                   {addingComment ? "Posting..." : "Post"}
                 </button>
@@ -930,8 +976,7 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
           </button>
           <button
             onClick={handleSave}
-            className={`px-4 py-2 rounded-lg font-semibold bg-cyan-500 text-white hover:bg-cyan-600`}
-          >
+            className="px-4 py-2 rounded-lg font-semibold bg-cyan-500 text-white hover:bg-cyan-600">
             Save
           </button>
         </div>

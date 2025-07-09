@@ -70,6 +70,13 @@ export const assignTaskToUser = async (taskId, userId) => {
   );
 };
 
+export const removeUserFromTask = async (taskId, userId) => {
+  return await requestWrapper(
+    `${TASK_API_URL}/remove-user/${taskId}/${userId}`,
+    "DELETE"
+  );
+};
+
 export const getTasksByStatus = async (status) => {
   return await requestWrapper(`${TASK_API_URL}/status/${status}`, "GET");
 };

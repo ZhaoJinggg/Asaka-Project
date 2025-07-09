@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-// import { useTasks } from '../context/TaskContext';
-// import { FiEdit2, FiCalendar, FiCheck, FiPaperclip, FiDownload, FiX } from 'react-icons/fi';
 import TaskDetailsModal from '../components/TaskDetailsModal';
 import FilesView from '../components/FilesView';
 import * as ProjectTaskAPI from '../API/ProjectTaskAPI';

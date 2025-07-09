@@ -29,7 +29,7 @@ function App() {
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   // Create signalR connection to listen to notification from server
   let connection;
-  
+
   const buildSignalRConection = async (accessToken) => {
     return new signalR.HubConnectionBuilder()
       .withUrl('http://localhost:5179/notificationHub', {
@@ -55,7 +55,7 @@ function App() {
           return;
         }
       }
-      
+
       // If valid, begin fetching data
       await fetchDataAndSetUp();
     }
@@ -87,10 +87,10 @@ function App() {
     await fetchNotifications();
 
     // Start signalR connection
-    try{
+    try {
       connection = await buildSignalRConection(result.accessToken);
       await connection.start();
-    }catch(err){
+    } catch (err) {
       console.error('SignalR Connection Error: ', err);
     }
 
@@ -260,7 +260,7 @@ function App() {
           path="/projects/:projectId"
           element={
             <ProtectedRoute>
-              <ProjectDetails onLogout={handleLogout} projects={projects} projectTasks={projectTasks} onUpdateProject={handleUpdateProject} users={users} userInfo={userInfo}/>
+              <ProjectDetails onLogout={handleLogout} projects={projects} projectTasks={projectTasks} onUpdateProject={handleUpdateProject} users={users} userInfo={userInfo} />
             </ProtectedRoute>
           }
         />

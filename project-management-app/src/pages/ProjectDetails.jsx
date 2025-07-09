@@ -6,7 +6,6 @@ import Layout from '../components/Layout';
 import ProjectOverview from '../components/ProjectOverview';
 import ProjectBoard from '../components/ProjectBoard.jsx';
 import FilesView from '../components/FilesView';
-// TaskContext removed
 import OverviewIcon from '../assets/overview-svgrepo-com.svg';
 import BoardIcon from '../assets/board-svgrepo-com.svg';
 import FilesIcon from '../assets/folder-arrow-up-svgrepo-com.svg';
