@@ -5,7 +5,7 @@ import * as ProjectTaskAPI from '../API/ProjectTaskAPI';
 import * as CommentAPI from '../API/CommentAPI';
 import { getUserId } from '../API/AuthAPI';
 import { getAllUsers } from '../API/UserAPI';
-import { getAttachmentsByProjectTaskId, uploadAttachment} from '../API/AttachmentAPI';
+import { getAttachmentsByProjectTaskId, uploadAttachment, downloadAttachment } from '../API/AttachmentAPI';
 
 const statusColors = {
   completed: 'bg-green-700 text-white',
@@ -272,12 +272,12 @@ function TaskDetailsModal({ task, onClose, onSave, projects, userInfo }) {
     if (!newComment.trim()) return;
     setAddingComment(true);
     try {
-      await CommentAPI.addComment(task.id, { content: newComment });
+      const response = await CommentAPI.addComment(task.id, { content: newComment });
       // Fetch latest comments from backend
       // const responseComment = await CommentAPI.getCommentsByProjectTaskId(task.id);
       // const dataComment = responseComment?.data || responseComment;
       // console.log('Fetched dataComment after add:', dataComment);
-      // setTaskComments(Array.isArray(dataComment) ? dataComment : (dataComment.comments || []));
+      setTaskComments(prev => [...prev, response.data ]);
       setNewComment('');
     } catch (error) {
       // Optionally show error
