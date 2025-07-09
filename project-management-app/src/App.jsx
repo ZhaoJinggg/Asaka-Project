@@ -58,21 +58,6 @@ function App() {
       
       // If valid, begin fetching data
       await fetchDataAndSetUp();
-      
-      // Start signalR connection
-      try{
-        connection = await buildSignalRConection(result.accessToken);
-        await connection.start();
-      }catch(err){
-        console.error('SignalR Connection Error: ', err);
-      }
-
-      // Listen for messages from the server
-      connection.on('ReceiveNotification', (notifications) => {
-        setNotifications(prev => [...prev, notification]);
-        console.log('Notifications from server:', notifications);
-        // Handle the message (e.g., update state)
-      });
     }
     runApp();
   }, [])
@@ -100,6 +85,21 @@ function App() {
     await fetchUsers();
     await fetchProjectTasks();
     await fetchNotifications();
+
+    // Start signalR connection
+    try{
+      connection = await buildSignalRConection(result.accessToken);
+      await connection.start();
+    }catch(err){
+      console.error('SignalR Connection Error: ', err);
+    }
+
+    // Listen for messages from the server
+    connection.on('ReceiveNotification', (notifications) => {
+      setNotifications(prev => [...prev, notifications]);
+      console.log('Notifications from server:', notifications);
+      // Handle the message (e.g., update state)
+    });
   }
 
   const fetchNotifications = async () => {
